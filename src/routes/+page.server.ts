@@ -8,6 +8,6 @@ export const load = () => {
 		return val;
 	});
 	unsub();
-	provider.updateAction(50);
-	provider.updateAction(25);
+	provider.updateAction(Math.random());
+	provider.updateAction(Math.random());
 };

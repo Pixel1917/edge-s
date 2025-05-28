@@ -55,6 +55,10 @@
 			"types": "./dist/server/EdgesHandle.d.ts",
 			"svelte": "./dist/server/EdgesHandle.js"
 		},
+		"./context": {
+			"types": "./dist/context/index.d.ts",
+			"svelte": "./dist/context/index.js"
+		},
 		"./state": {
 			"types": "./dist/store/index.d.ts",
 			"svelte": "./dist/store/index.js"
