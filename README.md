@@ -1,8 +1,8 @@
-# Edge-S
+# EdgeS
 
 ### A blazing-fast, extremely lightweight and SSR-friendly store for Svelte.
 
-**Edge-S** brings seamless, per-request state management to Svelte apps — fully reactive, server-aware, and serialization-safe by default.
+**EdgeS** brings seamless, per-request state management to Svelte apps — fully reactive, server-aware, and serialization-safe by default.
 
 No context boilerplate. No hydration headaches. Just drop-in SSR-compatible state primitives with built-in support for client-side reactivity and server-side isolation.
 
@@ -26,7 +26,7 @@ npm install edges-svelte
 
 ## Setup
 
-To enable **Edge-S**, wrap your SvelteKit `handle` hook and serialize the state in `transformPageChunks`:
+To enable **EdgeS**, wrap your SvelteKit `handle` hook and serialize the state in `transformPageChunks`:
 
 ```ts
 // hooks.server.ts
@@ -94,6 +94,36 @@ const myProvider = createProvider({
 
 - 💡 You get access to `createRawState`, `createState`, and `createDerivedState` in providers created by `createProvider`
 - 🛡️ Fully SSR-safe — all internal state is per-request
+
+---
+
+## Provider Caching with `cacheKey`
+
+To improve performance and avoid redundant computations, **EdgeS** supports caching providers by a unique `cacheKey`.
+
+### What is `cacheKey`?
+
+- A `cacheKey` is a string uniquely identifying a specific provider invocation.
+- It enables **caching the result of the provider’s factory function**
+- Prevents repeated calls to the same provider with identical parameters.
+  With caching:
+
+- The provider is called **only once per unique `cacheKey`** within a request.
+- Subsequent calls with the same key return the cached result instantly.
+
+### How to use `cacheKey`
+
+```ts
+import { createProvider } from 'edges-svelte';
+
+const myProvider = createProvider({
+	cacheKey: (params) => params.userId,
+	factory: ({ createState }, params) => {
+		const userData = createState('userData', () => fetchUserData(params.userId));
+		return { userData };
+	}
+});
+```
 
 ---
 
@@ -213,7 +243,7 @@ type EdgesHandle = (
 
 ### Why not just use `writable, derived`?
 
-Because `writable` and `derived` shares state between requests when used on the server. That means users could leak state into each other’s responses. **Edge-S** solves that by isolating state per request.
+Because `writable` and `derived` shares state between requests when used on the server. That means users could leak state into each other’s responses. **EdgeS** solves that by isolating state per request.
 
 ### Difference between `createState` and `createRawState`
 
