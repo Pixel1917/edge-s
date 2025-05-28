@@ -4,6 +4,10 @@ import type { RequestEvent } from '@sveltejs/kit';
 export interface ContextData {
 	event?: RequestEvent;
 	symbol?: symbol;
+	data: {
+		providers?: unknown;
+		[p: string]: unknown;
+	};
 }
 
 export default {
@@ -11,6 +15,6 @@ export default {
 		if (!browser) {
 			throw new Error('AsyncLocalStorage has not been initialized');
 		}
-		return {};
+		return { data: {} };
 	}
 };

@@ -1,4 +1,6 @@
 import { createState, createDerivedState, createRawState } from '../store/index.js';
+import { RequestContext } from '../context/index.js';
+import { browser } from '$app/environment';
 
 type StoreDeps = {
 	createRawState: typeof createRawState;
@@ -8,8 +10,11 @@ type StoreDeps = {
 
 interface CreateProviderOptions<T, I extends Record<string, unknown> = Record<string, unknown>> {
 	inject?: I;
+	cache?: boolean;
 	factory: (args: StoreDeps & I) => T;
 }
+
+const globalClientCache = new Map<symbol, unknown>();
 
 export const createProvider = <T, I extends Record<string, unknown> = Record<string, unknown>>(options: CreateProviderOptions<T, I>): (() => T) => {
 	const deps = {
@@ -20,8 +25,30 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 		},
 		...(options.inject || {})
 	} as StoreDeps & I;
+	const cacheKey = Symbol();
+	const cache = options.cache ?? true;
+	return () => {
+		if (!cache) {
+			return options.factory(deps);
+		}
 
-	return () => options.factory(deps);
+		if (browser) {
+			if (!globalClientCache.has(cacheKey)) {
+				globalClientCache.set(cacheKey, options.factory(deps));
+			}
+			return globalClientCache.get(cacheKey) as T;
+		} else {
+			const context = RequestContext.current();
+			if (!context.data.providers) {
+				context.data.providers = new Map<symbol, unknown>();
+			}
+			const map = context.data.providers as Map<symbol, unknown>;
+			if (!map.has(cacheKey)) {
+				map.set(cacheKey, options.factory(deps));
+			}
+			return map.get(cacheKey) as T;
+		}
+	};
 };
 
 export const createProviderFactory = <I extends Record<string, unknown>>(inject: I) => {

@@ -30,6 +30,7 @@ To enable **Edge-S**, wrap your SvelteKit `handle` hook and serialize the state 
 
 ```ts
 // hooks.server.ts
+import { dev } from '$app/environment';
 import { edgesHandle } from 'edges-svelte/server';
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -39,7 +40,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			//...Your handle code, use edgesEvent as a default svelte event (RequestEvent)
 			return resolve(edgesEvent, { transformPageChunk: ({ html }) => serialize(html) });
 		},
-		true
+		dev
 	);
 };
 ```
