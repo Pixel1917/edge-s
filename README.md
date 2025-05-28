@@ -117,7 +117,7 @@ To improve performance and avoid redundant computations, **EdgeS** supports cach
 import { createProvider } from 'edges-svelte';
 
 const myProvider = createProvider({
-	cacheKey: (params) => params.userId,
+	cacheKey: 'MyUniqueProviderName',
 	factory: ({ createState }, params) => {
 		const userData = createState('userData', () => fetchUserData(params.userId));
 		return { userData };
