@@ -19,7 +19,7 @@ No context boilerplate. No hydration headaches. Just drop-in SSR-compatible stat
 ## Installation
 
 ```bash
-npm install edge-s
+npm install edges-svelte
 ```
 
 ---
@@ -30,7 +30,7 @@ To enable **Edge-S**, wrap your SvelteKit `handle` hook and serialize the state 
 
 ```ts
 // hooks.server.ts
-import { edgesHandle } from 'edge-s/server';
+import { edgesHandle } from 'edges-svelte/server';
 
 export const handle: Handle = async ({ event, resolve }) => {
 	return edgesHandle(
@@ -51,7 +51,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 ### `createProvider` - creates store with access to `createState` and `createDerivedState`
 
 ```ts
-import { createProvider } from 'edge-s';
+import { createProvider } from 'edges-svelte';
 
 const myProvider = createProvider({
 	factory: ({ createState, createDerivedState }) => {
@@ -170,10 +170,10 @@ const useUserStore = withDeps({
 
 ## Imports
 
-| Feature                                   | Import from     |
-| ----------------------------------------- | --------------- |
-| `createProvider`, `createProviderFactory` | `edge-s`        |
-| `edgesHandle`                             | `edge-s/server` |
+| Feature                                   | Import from           |
+| ----------------------------------------- | --------------------- |
+| `createProvider`, `createProviderFactory` | `edges-svelte`        |
+| `edgesHandle`                             | `edges-svelte/server` |
 
 ---
 
