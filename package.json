@@ -52,12 +52,12 @@
 			"svelte": "./dist/index.js"
 		},
 		"./server": {
-			"svelte": "./dist/server/EdgesHandle.js",
-			"types": "./dist/server/EdgesHandle.d.ts"
+			"types": "./dist/server/EdgesHandle.d.ts",
+			"svelte": "./dist/server/EdgesHandle.js"
 		},
 		"./state": {
-			"svelte": "./dist/store/index.js",
-			"types": "./dist/store/index.d.ts"
+			"types": "./dist/store/index.d.ts",
+			"svelte": "./dist/store/index.js"
 		}
 	},
 	"peerDependencies": {
