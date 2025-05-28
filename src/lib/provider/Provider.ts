@@ -10,11 +10,11 @@ type StoreDeps = {
 
 interface CreateProviderOptions<T, I extends Record<string, unknown> = Record<string, unknown>> {
 	inject?: I;
-	cache?: boolean;
+	cacheKey?: string;
 	factory: (args: StoreDeps & I) => T;
 }
 
-const globalClientCache = new Map<symbol, unknown>();
+const globalClientCache = new Map<string, unknown>();
 
 export const createProvider = <T, I extends Record<string, unknown> = Record<string, unknown>>(options: CreateProviderOptions<T, I>): (() => T) => {
 	const deps = {
@@ -25,11 +25,9 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 		},
 		...(options.inject || {})
 	} as StoreDeps & I;
-	const cacheKey = Symbol();
-	const cache = options.cache ?? true;
-	console.log('cache-key', cacheKey);
+	const cacheKey = options.cacheKey;
 	return () => {
-		if (!cache) {
+		if (!cacheKey) {
 			return options.factory(deps);
 		}
 
@@ -41,10 +39,10 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 		} else {
 			const context = RequestContext.current();
 			if (!context.data.providers) {
-				context.data.providers = new Map<symbol, unknown>();
+				context.data.providers = new Map<string, unknown>();
 			}
 			console.log(RequestContext.current().data.providers);
-			const map = context.data.providers as Map<symbol, unknown>;
+			const map = context.data.providers as Map<string, unknown>;
 			if (!map.has(cacheKey)) {
 				map.set(cacheKey, options.factory(deps));
 			}
