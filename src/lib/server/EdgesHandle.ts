@@ -27,7 +27,17 @@ export const edgesHandle: EdgesHandle = async (event, callback, silentChromeDevt
 		RequestContext.current = () => {
 			const context = storage.getStore();
 			if (context === undefined) {
-				throw new Error('Request symbol has not been initialized');
+				throw new Error(
+					'[Edge-S] State access attempted outside of a valid request context.\n' +
+						'\nThis usually happens if you are calling a provider or using `createState`/`createDerivedState` at the module (top) level.\n' +
+						'\n✅ Correct usage:\n' +
+						'  - Inside a `load` function (page.server.ts / page.ts)\n' +
+						'  - Inside Svelte components (in <script>)\n' +
+						'  - Inside `handle` hook or other request-scoped logic\n' +
+						'\n🚫 Incorrect usage:\n' +
+						'  - Calling providers or states directly at the top level of a module (e.g., outside any function or component)\n' +
+						'\nTo fix this, wrap your provider or state call inside a function, component, or request handler.\n'
+				);
 			}
 			return context;
 		};
