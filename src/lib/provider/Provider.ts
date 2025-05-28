@@ -1,9 +1,9 @@
-import { createState, createStoreState, createDerivedStore } from '../store/index.js';
+import { createState, createDerivedState, createRawState } from '../store/index.js';
 
 type StoreDeps = {
+	createRawState: typeof createRawState;
 	createState: typeof createState;
-	createStoreState: typeof createStoreState;
-	createDerivedStore: typeof createDerivedStore;
+	createDerivedState: typeof createDerivedState;
 };
 
 interface CreateProviderOptions<T, I extends Record<string, unknown> = Record<string, unknown>> {
@@ -15,8 +15,8 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 	const deps = {
 		...{
 			createState,
-			createStoreState,
-			createDerivedStore
+			createRawState,
+			createDerivedState
 		},
 		...(options.inject || {})
 	} as StoreDeps & I;

@@ -38,7 +38,7 @@ const getBrowserState = <T>(key: string, initial: T) => {
 	return initial;
 };
 
-export const createState = <T>(key: string, initial: () => T): { value: T } => {
+export const createRawState = <T>(key: string, initial: () => T): { value: T } => {
 	if (browser) {
 		let state = getBrowserState(key, initial());
 		return {
@@ -66,7 +66,7 @@ export const createState = <T>(key: string, initial: () => T): { value: T } => {
 	};
 };
 
-export const createStoreState = <T>(key: string, initial: () => T): Writable<T> => {
+export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 	if (browser) {
 		return writable<T>(getBrowserState(key, initial()));
 	}
@@ -97,7 +97,7 @@ export const createStoreState = <T>(key: string, initial: () => T): Writable<T> 
 	};
 };
 
-export const createDerivedStore = <T, D>(stores: Readable<T>[] | [Readable<T>], deriveFn: (values: [T] | T[]) => D): Readable<D> => {
+export const createDerivedState = <T, D>(stores: Readable<T>[] | [Readable<T>], deriveFn: (values: [T] | T[]) => D): Readable<D> => {
 	if (browser) {
 		return derived(stores, deriveFn);
 	}

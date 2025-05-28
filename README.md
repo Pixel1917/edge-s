@@ -48,19 +48,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 ## Basic usage
 
-### `createProvider` - creates store with access to `createStoreState` and `createDerivedStore`
+### `createProvider` - creates store with access to `createState` and `createDerivedState`
 
 ```ts
 import { createProvider } from 'edge-s';
 
 const myProvider = createProvider({
-	factory: ({ createStoreState, createDerivedStore }) => {
+	factory: ({ createState, createDerivedState }) => {
 		// Works just like writable
-		const collection = createStoreState<number[]>('unique-key', () => []);
+		const collection = createState<number[]>('unique-key', () => []);
 		// Works just like derived
-		const collectionLengthDoubled = createDerivedStore([collection], ([$c]) => $c.length * 2);
+		const collectionLengthDoubled = createDerivedState([collection], ([$c]) => $c.length * 2);
 		// Advanced derived
-		const collectionLengthMultiplied = createDerivedStore([collection], ([$c]) => (count: number) => {
+		const collectionLengthMultiplied = createDerivedState([collection], ([$c]) => (count: number) => {
 			return $c.length * count;
 		});
 
@@ -91,7 +91,7 @@ const myProvider = createProvider({
 <button onclick={() => updateAction(25)}></button>  <!-- Will update the state -->
 ```
 
-- 💡 You get access to `createState`, `createStoreState`, and `createDerivedStore` in providers created by `createProvider`
+- 💡 You get access to `createRawState`, `createState`, and `createDerivedState` in providers created by `createProvider`
 - 🛡️ Fully SSR-safe — all internal state is per-request
 
 ---
@@ -100,16 +100,16 @@ const myProvider = createProvider({
 
 ### SSR-safe state access
 
-All state is isolated per request and never shared between users thanks to `AsyncLocalStorage`. Access to state primitives (`createState`, `createStoreState`, `createDerivedStore`) is only possible through provider functions — ensuring that you never accidentally share state across requests.
+All state is isolated per request and never shared between users thanks to `AsyncLocalStorage`. Access to state primitives (`createRawState`, `createState`, `createDerivedState`) is only possible through provider functions — ensuring that you never accidentally share state across requests.
 
 ---
 
 ## State Primitives
 
-### `createStoreState`
+### `createState`
 
 ```ts
-const count = createStoreState('count', () => 0);
+const count = createState('count', () => 0);
 
 $count;
 // in template: {$count}
@@ -124,8 +124,8 @@ count.update((n) => n + 1);
 ### `createDerivedStore`
 
 ```ts
-const count = createStoreState('count', () => 1);
-const doubled = createDerivedStore([count], ([$n]) => $n * 2);
+const count = createState('count', () => 1);
+const doubled = createDerivedState([count], ([$n]) => $n * 2);
 
 $doubled;
 ```
@@ -134,10 +134,10 @@ $doubled;
 
 ---
 
-### `createState`
+### `createRawState`
 
 ```ts
-const counter = createState('counter', () => 0);
+const counter = createRawState('counter', () => 0);
 counter.value += 1;
 ```
 
@@ -159,8 +159,9 @@ For shared injected dependencies:
 const withDeps = createProviderFactory({ user: getUserFromSession });
 
 const useUserStore = withDeps({
-	factory: ({ user, createStoreState }) => {
-		return createStoreState('user', () => user);
+	factory: ({ user, createState }) => {
+		const userState = createState('user', () => user);
+		return { userState };
 	}
 });
 ```
@@ -213,9 +214,9 @@ type EdgesHandle = (
 
 Because `writable` and `derived` shares state between requests when used on the server. That means users could leak state into each other’s responses. **Edge-S** solves that by isolating state per request.
 
-### Difference between `createStoreState` and `createState`
+### Difference between `createState` and `createRawState`
 
-`createState` is just like `$state`, but ssr-safe. It is a lightweight reactive variable and has no subscription. Access and change value through `.value`.
+`createRawState` is just like `$state`, but ssr-safe. It is a lightweight reactive variable and has no subscription. Access and change value through `.value`.
 💡 Use `myState.value` to get/set the value directly — no `$` sugar and set, update methods.
 
 ---

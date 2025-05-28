@@ -1,15 +1,15 @@
 import { createProvider } from '$lib/provider/index.js';
 
 export const testProvider = createProvider({
-	factory: ({ createStoreState, createDerivedStore }) => {
+	factory: ({ createState, createDerivedState }) => {
 		// Works just like writable
-		const collection = createStoreState<number[]>('unique-key', () => []);
+		const collection = createState<number[]>('unique-key', () => []);
 		// Works just like derived
-		const collectionLengthDoubled = createDerivedStore([collection], ([$collection]) => {
+		const collectionLengthDoubled = createDerivedState([collection], ([$collection]) => {
 			return $collection.length * 2;
 		});
 		// Advanced derived
-		const collectionLengthMultiplied = createDerivedStore([collection], ([$collection]) => (count: number) => {
+		const collectionLengthMultiplied = createDerivedState([collection], ([$collection]) => (count: number) => {
 			return $collection.length * count;
 		});
 
