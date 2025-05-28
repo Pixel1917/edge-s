@@ -8,7 +8,7 @@ No context boilerplate. No hydration headaches. Just drop-in SSR-compatible stat
 
 - 🔄 Unified state for server and client
 - 🧠 Persistent per-request memory via `AsyncLocalStorage`
-- 💧 Tiny API — no subscriptions needed unless you want them
+- 💧 Tiny API
 - 💥 Instant serialization without magic
 - 🧩 Provider-based dependency injection, zero runtime overhead
 
@@ -119,7 +119,15 @@ import { createProvider } from 'edges-svelte';
 const myProvider = createProvider({
 	cacheKey: 'MyUniqueProviderName',
 	factory: ({ createState }, params) => {
-		const userData = createState('userData', () => fetchUserData(params.userId));
+		const myService = new MyService();
+		const someData = createState('userData', () => undefined);
+
+		const setUserData = async () => {
+			await myService.getData().then((user) => {
+				userData.set(user);
+			});
+		};
+
 		return { userData };
 	}
 });
