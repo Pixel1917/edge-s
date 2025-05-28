@@ -5,7 +5,7 @@ export interface ContextData {
 	event?: RequestEvent;
 	symbol?: symbol;
 	data: {
-		providers?: unknown;
+		providers?: Map<symbol, unknown>;
 		[p: string]: unknown;
 	};
 }

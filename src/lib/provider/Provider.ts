@@ -27,6 +27,7 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 	} as StoreDeps & I;
 	const cacheKey = Symbol();
 	const cache = options.cache ?? true;
+	console.log('cache-key', cacheKey);
 	return () => {
 		if (!cache) {
 			return options.factory(deps);
@@ -42,6 +43,7 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 			if (!context.data.providers) {
 				context.data.providers = new Map<symbol, unknown>();
 			}
+			console.log(RequestContext.current().data.providers);
 			const map = context.data.providers as Map<symbol, unknown>;
 			if (!map.has(cacheKey)) {
 				map.set(cacheKey, options.factory(deps));

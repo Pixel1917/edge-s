@@ -23,7 +23,7 @@ type EdgesHandle = (
  *   and returns a 204 No Content response instead of a 404 error.
  */
 export const edgesHandle: EdgesHandle = async (event, callback, silentChromeDevtools = false) => {
-	return await storage.run({ event: event, symbol: Symbol(), data: {} }, async () => {
+	return await storage.run({ event: event, symbol: Symbol(), data: { providers: new Map() } }, async () => {
 		RequestContext.current = () => {
 			const context = storage.getStore();
 			if (context === undefined) {
