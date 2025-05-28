@@ -102,15 +102,26 @@ export const createDerivedState = <T, D>(stores: Readable<T>[] | [Readable<T>], 
 		return derived(stores, deriveFn);
 	}
 
-	const values = stores.map((s) => {
-		let value!: T;
-		s.subscribe((v) => (value = v))();
-		return value;
-	});
 	return {
 		subscribe(run) {
-			run(deriveFn(values));
-			return () => {};
+			const values: T[] = new Array(stores.length);
+			let initializedCount = 0;
+
+			const unsubscribers = stores.map((store, i) =>
+				store.subscribe((value) => {
+					values[i] = value;
+					if (initializedCount < stores.length) {
+						initializedCount++;
+					}
+					if (initializedCount >= stores.length) {
+						run(deriveFn(values));
+					}
+				})
+			);
+
+			return () => {
+				unsubscribers.forEach((unsub) => unsub());
+			};
 		}
 	};
 };

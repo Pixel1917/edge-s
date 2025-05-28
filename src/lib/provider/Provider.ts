@@ -41,7 +41,6 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 			if (!context.data.providers) {
 				context.data.providers = new Map<string, unknown>();
 			}
-			console.log(RequestContext.current().data.providers);
 			const map = context.data.providers as Map<string, unknown>;
 			if (!map.has(cacheKey)) {
 				map.set(cacheKey, options.factory(deps));
