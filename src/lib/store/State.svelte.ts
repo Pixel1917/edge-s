@@ -40,7 +40,7 @@ const getBrowserState = <T>(key: string, initial: T) => {
 
 export const createRawState = <T>(key: string, initial: () => T): { value: T } => {
 	if (browser) {
-		let state = getBrowserState(key, initial());
+		let state = $state(getBrowserState(key, initial()));
 		return {
 			get value() {
 				return state;

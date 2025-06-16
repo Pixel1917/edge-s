@@ -1,6 +1,6 @@
 # EdgeS
 
-### A blazing-fast, extremely lightweight and SSR-friendly store for Svelte.
+### A blazing-fast, extremely lightweight and SSR-friendly store for SvelteKit.
 
 **EdgeS** brings seamless, per-request state management to Svelte apps — fully reactive, server-aware, and serialization-safe by default.
 
@@ -49,87 +49,54 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 ## Basic usage
 
-### `createProvider` - creates store with access to `createState` and `createDerivedState`
+### `createProvider` - creates a provider function that can manage states
 
 ```ts
 import { createProvider } from 'edges-svelte';
 
-const myProvider = createProvider({
-	factory: ({ createState, createDerivedState }) => {
-		// Works just like writable
-		const collection = createState<number[]>('unique-key', () => []);
-		// Works just like derived
-		const collectionLengthDoubled = createDerivedState([collection], ([$c]) => $c.length * 2);
-		// Advanced derived
-		const collectionLengthMultiplied = createDerivedState([collection], ([$c]) => (count: number) => {
-			return $c.length * count;
-		});
+const myProvider = createProvider('MyProvider', ({ createState, createDerivedState }) => {
+	// createState creates a writable, SSR-safe store with a unique key
+	const collection = createState<number[]>([]);
+	// createDerivedState creates a derived store, SSR-safe as well
+	const collectionLengthDoubled = createDerivedState([collection], ([$c]) => $c.length * 2);
 
-		const updateAction = (num: number) => {
-			collection.update((n) => {
-				n = [...n, num];
-				return n;
-			});
-		};
+	const updateAction = (num: number) => {
+		collection.update((n) => [...n, num]);
+	};
 
-		// ...Your code;
-
-		return { collection, collectionLengthDoubled, collectionLengthMultiplied, updateAction };
-	}
+	return { collection, collectionLengthDoubled, updateAction };
 });
 ```
 
-```sveltehtml
+```svelte
 <script lang="ts">
-  import {myProvider} from 'your-alias';
+	import { myProvider } from 'your-alias';
 
-  const {collection, collectionLengthDoubled, collectionLengthMultiplied, updateAction} = myProvider();
+	const { collection, collectionLengthDoubled, updateAction } = myProvider();
 </script>
 
-{$collection.join(', ')} <!-- Empty string before button click, 25 after button click -->
-{$collectionLengthDoubled} <!-- 0 before button click, 2 after button click -->
-{$collectionLengthMultiplied(5)}  <!-- 0 before button click, 5 after button click -->
-<button onclick={() => updateAction(25)}></button>  <!-- Will update the state -->
+{$collection.join(', ')}
+{$collectionLengthDoubled}
+<!-- 0 before button click, 2 after button click -->
+{$collectionLengthMultiplied(5)}
+<!-- 0 before button click, 5 after button click -->
+<button onclick={() => updateAction(25)}>count update</button>
+<!-- Will update the state -->
 ```
 
-- 💡 You get access to `createRawState`, `createState`, and `createDerivedState` in providers created by `createProvider`
-- 🛡️ Fully SSR-safe — all internal state is per-request
+- 💡 All stores created inside `createProvider` use unique keys automatically and are request-scoped
+- 🛡️ Fully SSR-safe — stores are isolated per request and serialized automatically
 
 ---
 
-## Provider Caching with `cacheKey`
+## Provider Caching (built-in)
 
-To improve performance and avoid redundant computations, **EdgeS** supports caching providers by a unique `cacheKey`.
-
-### What is `cacheKey`?
-
-- A `cacheKey` is a string uniquely identifying a specific provider invocation.
-- It enables **caching the result of the provider’s factory function**
-- Prevents repeated calls to the same provider with identical parameters.
-  With caching:
-
-- The provider is called **only once per unique `cacheKey`** within a request.
-- Subsequent calls with the same key return the cached result instantly.
-
-### How to use `cacheKey`
+Providers are cached per request by their unique provider name (cache key). Calling the same provider multiple times in the same request returns the cached instance.
 
 ```ts
-import { createProvider } from 'edges-svelte';
-
-const myProvider = createProvider({
-	cacheKey: 'MyUniqueProviderName',
-	factory: ({ createState }, params) => {
-		const myService = new MyService();
-		const someData = createState('userData', () => undefined);
-
-		const setUserData = async () => {
-			await myService.getData().then((user) => {
-				userData.set(user);
-			});
-		};
-
-		return { userData };
-	}
+const myCachedProvider = createProvider('MyCachedProvider', ({ createState }) => {
+	const data = createState(() => 'cached data');
+	return { data };
 });
 ```
 
@@ -139,7 +106,9 @@ const myProvider = createProvider({
 
 ### SSR-safe state access
 
-All state is isolated per request and never shared between users thanks to `AsyncLocalStorage`. Access to state primitives (`createRawState`, `createState`, `createDerivedState`) is only possible through provider functions — ensuring that you never accidentally share state across requests.
+State is isolated per request using `AsyncLocalStorage` internally. You never share data between users.
+
+You **must** always create stores inside providers returned by `createProvider`.
 
 ---
 
@@ -148,66 +117,57 @@ All state is isolated per request and never shared between users thanks to `Asyn
 ### `createState`
 
 ```ts
-const count = createState('count', () => 0);
+const count = createState(0);
 
-$count;
-// in template: {$count}
+$count; // reactive store value
 
 count.update((n) => n + 1);
 ```
 
-> This behaves like native Svelte `writable`, but scoped to request. Fully SSR-safe.
+> Behaves like Svelte’s `writable`, but is fully SSR-safe and scoped per-request.
 
 ---
 
-### `createDerivedStore`
+### `createDerivedState`
 
 ```ts
-const count = createState('count', () => 1);
+const count = createState(1);
 const doubled = createDerivedState([count], ([$n]) => $n * 2);
 
 $doubled;
 ```
 
-> Works just like Svelte’s `derived`, but fully SSR-compatible. On the server, computes once and reuses the value.
+> Like Svelte’s `derived`.
 
 ---
 
 ### `createRawState`
 
 ```ts
-const counter = createRawState('counter', () => 0);
+const counter = createRawState(0);
 counter.value += 1;
 ```
 
-> Lightweight, reactive, SSR-safe variable. No subscriptions. Access through `.value`.
-
-- ✅ Fully server-aware
-- ✅ Serialization-safe
-- ✅ Sync updates
+> Lightweight reactive variable, SSR-safe, no subscriptions, direct `.value` access.
 
 ---
 
 ## Dependency Injection
 
-### `createProviderFactory`
-
-For shared injected dependencies:
+You can inject dependencies into providers with `createProviderFactory`:
 
 ```ts
 const withDeps = createProviderFactory({ user: getUserFromSession });
 
-const useUserStore = withDeps({
-	factory: ({ user, createState }) => {
-		const userState = createState('user', () => user);
-		return { userState };
-	}
+const useUserStore = withDeps('UserStore', ({ user, createState }) => {
+	const userState = createState(user);
+	return { userState };
 });
 ```
 
 ---
 
-## Imports
+## Exports summary
 
 | Feature                                   | Import from           |
 | ----------------------------------------- | --------------------- |
@@ -216,15 +176,7 @@ const useUserStore = withDeps({
 
 ---
 
-## Best Practices
-
-- Use unique keys for each state to avoid collisions
-- Always create your states via providers to avoid shared memory across requests
-- Prefer `createProvider` even for simple state logic — it scales better and stays testable
-
----
-
-## About edgesHandle
+## About `edgesHandle`
 
 ```ts
 /**
@@ -249,14 +201,18 @@ type EdgesHandle = (
 
 ## FAQ
 
-### Why not just use `writable, derived`?
+### Why not just use `writable`, `derived` from Svelte?
 
-Because `writable` and `derived` shares state between requests when used on the server. That means users could leak state into each other’s responses. **EdgeS** solves that by isolating state per request.
+Because those stores share state between requests when used on the server, potentially leaking data between users.
 
-### Difference between `createState` and `createRawState`
+EdgeS ensures per-request isolation, so your server state is never shared accidentally.
 
-`createRawState` is just like `$state`, but ssr-safe. It is a lightweight reactive variable and has no subscription. Access and change value through `.value`.
-💡 Use `myState.value` to get/set the value directly — no `$` sugar and set, update methods.
+### What is the difference between `createState` and `createRawState`?
+
+- `createState` returns a full Svelte writable store with subscription and `$` store syntax.
+- `createRawState` is a minimal reactive variable, no subscriptions, accessed via `.value`.
+
+Use `createRawState` for simple values where you don’t need reactive subscriptions.
 
 ---
 
