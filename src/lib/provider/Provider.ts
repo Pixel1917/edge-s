@@ -25,8 +25,6 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 	inject?: I
 ): (() => T) => {
 	const cacheKey = name;
-	let stateCounter = 0;
-
 	return (): T => {
 		let contextMap: Map<string, unknown>;
 		if (browser) {
@@ -42,6 +40,8 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 		if (cacheKey && contextMap.has(cacheKey)) {
 			return contextMap.get(cacheKey) as T;
 		}
+
+		let stateCounter = 0;
 
 		const autoKeyDeps = {
 			...inject,
