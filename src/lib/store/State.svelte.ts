@@ -97,7 +97,11 @@ export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 	};
 };
 
-export const createDerivedState = <T, D>(stores: Readable<T>[] | [Readable<T>], deriveFn: (values: [T] | T[]) => D): Readable<D> => {
+type Stores = [Readable<unknown>, ...Array<Readable<unknown>>] | Array<Readable<unknown>>;
+
+type StoresValues<T> = T extends Readable<infer U> ? U : { [K in keyof T]: T[K] extends Readable<infer U> ? U : never };
+
+export const createDerivedState = <T extends Stores, D>(stores: T, deriveFn: (values: StoresValues<T>) => D): Readable<D> => {
 	if (browser) {
 		return derived(stores, deriveFn);
 	}
@@ -109,12 +113,12 @@ export const createDerivedState = <T, D>(stores: Readable<T>[] | [Readable<T>], 
 
 			const unsubscribers = stores.map((store, i) =>
 				store.subscribe((value) => {
-					values[i] = value;
+					values[i] = value as T;
 					if (initializedCount < stores.length) {
 						initializedCount++;
 					}
 					if (initializedCount >= stores.length) {
-						run(deriveFn(values));
+						run(deriveFn(values as StoresValues<T>));
 					}
 				})
 			);

@@ -5,7 +5,7 @@
 
 	const { someState, someRawState, collection, collectionLengthDoubled, collectionLengthMultiplied, updateAction } = testProvider();
 
-	const { user, unsetUser, addPost, posts } = secondTestProvider();
+	const { user, unsetUser, addPost, posts, postsLengthDoubled } = secondTestProvider();
 
 	const { someState: injected, update } = injectedTestProvider();
 </script>
@@ -34,6 +34,7 @@
 <br />
 <hr />
 <br />
+{$postsLengthDoubled}
 {#each $posts as post (post.id)}
 	{post.id} - {post.name}
 {/each}

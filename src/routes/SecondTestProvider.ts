@@ -3,7 +3,7 @@ import { createProvider } from '$lib/provider/index.js';
 export const secondTestProvider = createProvider('secondTestProvider', ({ createState, createDerivedState, createRawState }) => {
 	const posts = createState<{ id: number; name: string }[]>([{ id: 1, name: 'base-post' }]);
 	const user = createRawState<null | { id: number; name: string }>(null);
-	const collectionLengthDoubled = createDerivedState([posts], ([$collection]) => {
+	const collectionLengthDoubled = createDerivedState<[typeof posts], number>([posts], ([$collection]) => {
 		return $collection.length * 2;
 	});
 
@@ -22,5 +22,5 @@ export const secondTestProvider = createProvider('secondTestProvider', ({ create
 		user.value = null;
 	};
 
-	return { posts, user, addPost, collectionLengthDoubled, setUser, unsetUser };
+	return { posts, user, addPost, postsLengthDoubled: collectionLengthDoubled, setUser, unsetUser };
 });
