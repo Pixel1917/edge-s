@@ -54,7 +54,7 @@ export const createRawState = <T>(key: string, initial: () => T): { value: T } =
 	const map = getRequestContext();
 	return {
 		get value() {
-			if (!map) return undefined as T;
+			if (!map) return initial();
 			if (!map.has(key)) map.set(key, structuredClone(initial()));
 			return map.get(key) as T;
 		},
@@ -76,23 +76,23 @@ export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 
 	if (!map.has(key)) map.set(key, structuredClone(initial()));
 
-	const subscribers: Set<(val: T) => void> = new Set();
+	//const subscribers: Set<(val: T) => void> = new Set();
 
 	return {
 		subscribe(run) {
 			run(map.get(key) as T);
-			subscribers.add(run);
-			return () => subscribers.delete(run);
+			//subscribers.add(run);
+			return () => {};
 		},
 		set(val: T) {
 			map.set(key, val);
-			subscribers.forEach((fn) => fn(val));
+			//subscribers.forEach((fn) => fn(val));
 		},
 		update(updater) {
 			const oldVal = map.get(key) as T;
 			const newVal = updater(oldVal);
 			map.set(key, newVal);
-			subscribers.forEach((fn) => fn(newVal));
+			//subscribers.forEach((fn) => fn(newVal));
 		}
 	};
 };
@@ -110,6 +110,14 @@ export const createDerivedState = <T extends Stores, D>(stores: T, deriveFn: (va
 		subscribe(run) {
 			const values: T[] = new Array(stores.length);
 			let initializedCount = 0;
+			let isInitialized = false;
+
+			const checkAndRun = () => {
+				if (initializedCount >= stores.length && !isInitialized) {
+					isInitialized = true;
+					run(deriveFn(values as StoresValues<T>));
+				}
+			};
 
 			const unsubscribers = stores.map((store, i) =>
 				store.subscribe((value) => {
@@ -117,9 +125,7 @@ export const createDerivedState = <T extends Stores, D>(stores: T, deriveFn: (va
 					if (initializedCount < stores.length) {
 						initializedCount++;
 					}
-					if (initializedCount >= stores.length) {
-						run(deriveFn(values as StoresValues<T>));
-					}
+					checkAndRun();
 				})
 			);
 

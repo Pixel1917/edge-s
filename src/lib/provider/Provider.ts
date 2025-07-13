@@ -19,6 +19,20 @@ type NoConflict<I> = {
 
 const globalClientCache = new Map<string, unknown>();
 
+export const clearProviderCache = (pattern?: string) => {
+	if (browser) {
+		if (pattern) {
+			for (const [key] of globalClientCache) {
+				if (key.includes(pattern)) {
+					globalClientCache.delete(key);
+				}
+			}
+		} else {
+			globalClientCache.clear();
+		}
+	}
+};
+
 export const createProvider = <T, I extends Record<string, unknown> = Record<string, unknown>>(
 	name: string,
 	factory: (args: StoreDeps & NoConflict<I>) => T,
@@ -38,7 +52,10 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 		}
 
 		if (cacheKey && contextMap.has(cacheKey)) {
-			return contextMap.get(cacheKey) as T;
+			const cached = contextMap.get(cacheKey);
+			if (cached !== undefined) {
+				return cached as T;
+			}
 		}
 
 		let stateCounter = 0;

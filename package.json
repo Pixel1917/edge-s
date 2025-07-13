@@ -1,6 +1,6 @@
 {
 	"name": "edges-svelte",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"license": "MIT",
 	"author": "Pixel1917",
 	"description": "A blazing-fast, extremely lightweight and SSR-friendly store for Svelte",
