@@ -1,6 +1,6 @@
-import { createProvider } from '$lib/provider/index.js';
+import { createStore } from '$lib/provider/index.js';
 
-export const secondTestProvider = createProvider('secondTestProvider', ({ createState, createDerivedState, createRawState }) => {
+export const secondTestProvider = createStore('secondTestProvider', ({ createState, createDerivedState, createRawState }) => {
 	const posts = createState<{ id: number; name: string }[]>([{ id: 1, name: 'base-post' }]);
 	const user = createRawState<null | { id: number; name: string }>(null);
 	const collectionLengthDoubled = createDerivedState<[typeof posts], number>([posts], ([$collection]) => {

@@ -2,14 +2,32 @@
 	import { testProvider } from './TestProvider.js';
 	import { secondTestProvider } from './SecondTestProvider.js';
 	import { injectedTestProvider } from './FactoryProvider.js';
+	import { TestWithoutProvider } from './TestWithoutProvider.js';
 
 	const { someState, someRawState, collection, collectionLengthDoubled, collectionLengthMultiplied, updateAction } = testProvider();
 
 	const { user, unsetUser, addPost, posts, postsLengthDoubled } = secondTestProvider();
 
 	const { someState: injected, update } = injectedTestProvider();
+
+	const changeName = () => {
+		if (user.value) {
+			user.value.name = 'clown';
+		}
+	};
+
+	const { someState1 } = TestWithoutProvider();
+
+	const upd = () => {
+		someState1.value.name = 'artem';
+	};
 </script>
 
+{someState1.value?.name}
+
+<button onclick={() => upd()}>upd</button>
+<hr />
+<br />
 {$collection.join(', ')}
 {$collectionLengthDoubled}
 <!-- 0 before button click, 2 after button click -->
@@ -47,3 +65,4 @@
 {injected.value}
 
 <button onclick={() => update()}>check injection</button>
+<button onclick={() => changeName()}>change name</button>

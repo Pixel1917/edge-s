@@ -1,8 +1,9 @@
-import { createProviderFactory } from '$lib/provider/index.js';
+import { createStoreFactory } from '$lib/provider/index.js';
 
-const createInjected = createProviderFactory({
+const createInjected = createStoreFactory({
 	log: () => {
 		console.log('Im injected');
+		return 'lol';
 	}
 });
 

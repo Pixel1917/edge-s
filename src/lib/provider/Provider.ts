@@ -7,19 +7,13 @@ import { RequestContext } from '../context/index.js';
 import { browser } from '$app/environment';
 import type { Writable } from 'svelte/store';
 
-type StoreDeps = {
-	createRawState: <T>(initial: T | (() => T)) => { value: T };
-	createState: <T>(initial: T | (() => T)) => Writable<T>;
-	createDerivedState: typeof BaseCreateDerivedState;
-};
-
-type NoConflict<I> = {
-	[K in keyof I]: K extends keyof StoreDeps ? never : I[K];
+type NoConflict<I, D> = {
+	[K in keyof I]: K extends keyof D ? never : I[K];
 };
 
 const globalClientCache = new Map<string, unknown>();
 
-export const clearProviderCache = (pattern?: string) => {
+export const clearCache = (pattern?: string) => {
 	if (browser) {
 		if (pattern) {
 			for (const [key] of globalClientCache) {
@@ -33,12 +27,19 @@ export const clearProviderCache = (pattern?: string) => {
 	}
 };
 
-export const createProvider = <T, I extends Record<string, unknown> = Record<string, unknown>>(
+export const createUiProvider = <
+	T,
+	F,
+	D extends Record<string, unknown> | ((cacheKey: string) => Record<string, unknown>),
+	I extends Record<string, unknown> = Record<string, unknown>
+>(
 	name: string,
-	factory: (args: StoreDeps & NoConflict<I>) => T,
+	factory: (deps: F) => T,
+	dependencies: D,
 	inject?: I
 ): (() => T) => {
 	const cacheKey = name;
+
 	return (): T => {
 		let contextMap: Map<string, unknown>;
 		if (browser) {
@@ -58,33 +59,72 @@ export const createProvider = <T, I extends Record<string, unknown> = Record<str
 			}
 		}
 
-		let stateCounter = 0;
+		const deps = {
+			...(typeof dependencies === 'function' ? dependencies(cacheKey) : dependencies),
+			...inject
+		} as F;
 
-		const autoKeyDeps = {
-			...inject,
-			createState: <R>(initial: R | (() => R)) => {
-				const key = `${cacheKey ?? 'provider'}::state::${stateCounter++}`;
-				const initFn = typeof initial === 'function' ? (initial as () => R) : () => initial;
-				return BaseCreateState<R>(key, initFn);
-			},
-			createRawState: <RS>(initial: RS | (() => RS)) => {
-				const key = `${cacheKey ?? 'provider'}::rawstate::${stateCounter++}`;
-				const initFn = typeof initial === 'function' ? (initial as () => RS) : () => initial;
-				return BaseCreateRawState<RS>(key, initFn);
-			},
-			createDerivedState: BaseCreateDerivedState
-		} as StoreDeps & NoConflict<I>;
+		const instance = factory(deps);
 
-		const instance = factory(autoKeyDeps);
 		if (cacheKey) {
 			contextMap.set(cacheKey, instance);
 		}
+
 		return instance;
 	};
 };
 
-export const createProviderFactory = <I extends Record<string, unknown>>(inject: I) => {
-	return function createInjectedProvider<T>(name: string, factory: (args: StoreDeps & NoConflict<I>) => T): () => T {
-		return createProvider(name, factory, inject);
+type StoreDeps = {
+	createRawState: <T>(initial: T | (() => T)) => { value: T };
+	createState: <T>(initial: T | (() => T)) => Writable<T>;
+	createDerivedState: typeof BaseCreateDerivedState;
+};
+
+export const createStore = <T, I extends Record<string, unknown> = Record<string, unknown>>(
+	name: string,
+	factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T,
+	inject?: I
+): (() => T) => {
+	return createUiProvider(
+		name,
+		factory,
+		(cacheKey: string) => {
+			let stateCounter = 0;
+
+			return {
+				createState: <R>(initial: R | (() => R)) => {
+					const key = `${cacheKey}::state::${stateCounter++}`;
+					const initFn = typeof initial === 'function' ? (initial as () => R) : () => initial;
+					return BaseCreateState<R>(key, initFn);
+				},
+				createRawState: <RS>(initial: RS | (() => RS)) => {
+					const key = `${cacheKey}::rawstate::${stateCounter++}`;
+					const initFn = typeof initial === 'function' ? (initial as () => RS) : () => initial;
+					return BaseCreateRawState<RS>(key, initFn);
+				},
+				createDerivedState: BaseCreateDerivedState
+			};
+		},
+		inject
+	);
+};
+
+export const createStoreFactory = <I extends Record<string, unknown>>(inject: I) => {
+	return function createInjectedStore<T>(name: string, factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T): () => T {
+		return createStore(name, factory, inject);
+	};
+};
+
+export const createPresenter = <T, I extends Record<string, unknown> = Record<string, unknown>>(
+	name: string,
+	factory: (args: I) => T,
+	inject?: I
+): (() => T) => {
+	return createUiProvider(name, factory, {}, inject);
+};
+
+export const createPresenterFactory = <I extends Record<string, unknown>>(inject: I) => {
+	return function createInjectedStore<T>(name: string, factory: (args: I) => T): () => T {
+		return createPresenter(name, factory, inject);
 	};
 };

@@ -1,6 +1,6 @@
-import { createProvider } from '$lib/provider/index.js';
+import { createStore } from '$lib/provider/index.js';
 
-export const testProvider = createProvider('testProvider', ({ createState, createDerivedState, createRawState }) => {
+export const testProvider = createStore('testProvider', ({ createState, createDerivedState, createRawState }) => {
 	// Works just like writable
 	const collection = createState<number[]>([]);
 	const someState = createState(15);

@@ -10,7 +10,7 @@ No context boilerplate. No hydration headaches. Just drop-in SSR-compatible stat
 - 🧠 Persistent per-request memory via `AsyncLocalStorage`
 - 💧 Tiny API
 - 💥 Instant serialization without magic
-- 🧩 Provider-based dependency injection, zero runtime overhead
+- 🧩 Dependency injection, zero runtime overhead
 
 > Designed for **SvelteKit**.
 
@@ -49,12 +49,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 ## Basic usage
 
-### `createProvider` - creates a provider function that can manage states
+### `createStore` - creates a store function that can manage states
 
 ```ts
-import { createProvider } from 'edges-svelte';
-
-const myProvider = createProvider('MyProvider', ({ createState, createDerivedState }) => {
+import { createStore } from 'edges-svelte';
+// First argument is a unique name. Each store must havew a unique name.
+const myStore = createStore('MyStore', ({ createState, createDerivedState }) => {
 	// createState creates a writable, SSR-safe store with a unique key
 	const collection = createState<number[]>([]);
 	// createDerivedState creates a derived store, SSR-safe as well
@@ -70,9 +70,9 @@ const myProvider = createProvider('MyProvider', ({ createState, createDerivedSta
 
 ```svelte
 <script lang="ts">
-	import { myProvider } from 'your-alias';
+	import { myStore } from 'your-alias';
 
-	const { collection, collectionLengthDoubled, updateAction } = myProvider();
+	const { collection, collectionLengthDoubled, updateAction } = myStore();
 </script>
 
 {$collection.join(', ')}
@@ -84,17 +84,17 @@ const myProvider = createProvider('MyProvider', ({ createState, createDerivedSta
 <!-- Will update the state -->
 ```
 
-- 💡 All stores created inside `createProvider` use unique keys automatically and are request-scoped
+- 💡 All stores created inside `createStore` use unique keys automatically and are request-scoped
 - 🛡️ Fully SSR-safe — stores are isolated per request and serialized automatically
 
 ---
 
-## Provider Caching (built-in)
+## Store Caching (built-in)
 
-Providers are cached per request by their unique provider name (cache key). Calling the same provider multiple times in the same request returns the cached instance.
+Stores are cached per request by their unique name (cache key). Calling the same store multiple times in the same request returns the cached instance.
 
 ```ts
-const myCachedProvider = createProvider('MyCachedProvider', ({ createState }) => {
+const myCachedStore = createStore('MyCachedStore', ({ createState }) => {
 	const data = createState(() => 'cached data');
 	return { data };
 });
@@ -108,7 +108,7 @@ const myCachedProvider = createProvider('MyCachedProvider', ({ createState }) =>
 
 State is isolated per request using `AsyncLocalStorage` internally. You never share data between users.
 
-You **must** always create stores inside providers returned by `createProvider`.
+You **must** always create stores inside using `createStore`.
 
 ---
 
@@ -154,10 +154,10 @@ counter.value += 1;
 
 ## Dependency Injection
 
-You can inject dependencies into providers with `createProviderFactory`:
+You can inject dependencies into providers with `createStoreFactory`:
 
 ```ts
-const withDeps = createProviderFactory({ user: getUserFromSession });
+const withDeps = createStoreFactory({ user: getUserFromSession });
 
 const useUserStore = withDeps('UserStore', ({ user, createState }) => {
 	const userState = createState(user);
@@ -167,12 +167,30 @@ const useUserStore = withDeps('UserStore', ({ user, createState }) => {
 
 ---
 
+## createPresenter
+
+A cached provider for UI logic without direct state management primitives. Perfect for separating business logic from state management.
+
+#### When to use
+
+createPresenter is ideal when you want to:
+
+1. Keep state management separate from UI logic
+2. Create reusable business logic that doesn't directly manage state
+3. Build presenters that orchestrate between services and stores
+4. Follow clean architecture patterns with clear separation of concerns
+
+Difference from createStore
+While createStore provides state primitives (createState, createDerivedState, createRawState), createPresenter focuses purely on business logic and coordination. It maintains all the caching and dependency injection features of createStore but without state management utilities.
+
+---
+
 ## Exports summary
 
-| Feature                                   | Import from           |
-| ----------------------------------------- | --------------------- |
-| `createProvider`, `createProviderFactory` | `edges-svelte`        |
-| `edgesHandle`                             | `edges-svelte/server` |
+| Feature                                                                          | Import from           |
+| -------------------------------------------------------------------------------- | --------------------- |
+| `createStore`, `createStoreFactory`, `createPresenter`, `createPresenterFactory` | `edges-svelte`        |
+| `edgesHandle`                                                                    | `edges-svelte/server` |
 
 ---
 
