@@ -2,6 +2,7 @@ import RequestContext from '../context/Context.js';
 import { uneval } from 'devalue';
 import { browser } from '$app/environment';
 import { derived, type Readable, type Writable, writable } from 'svelte/store';
+import { registerStateUpdate } from '$lib/client/NavigationSync.svelte.js';
 
 const RequestStores: WeakMap<symbol, Map<string, unknown>> = new WeakMap();
 
@@ -13,21 +14,31 @@ declare global {
 
 export const stateSerialize = (): string => {
 	const map = getRequestContext();
-	if (map) {
-		const entries = Array.from(map).map(([key, value]) => [uneval(key), uneval(value)]);
+	if (!map || map.size === 0) return '';
 
-		return `<script>
-			window.__SAFE_SSR_STATE__ = new Map();
-			${entries.map(([key, value]) => `window.__SAFE_SSR_STATE__.set(${key}, ${value})`).join(';')}
-			</script>`;
+	const entries: string[] = [];
+	for (const [key, value] of map) {
+		entries.push(`window.__SAFE_SSR_STATE__.set(${uneval(key)},${uneval(value)})`);
 	}
-	return '';
+
+	return `<script>window.__SAFE_SSR_STATE__=new Map();${entries.join(';')}</script>`;
 };
 
 const getRequestContext = () => {
 	const sym = RequestContext.current().symbol;
 	if (sym) {
-		return RequestStores.get(sym) ?? RequestStores.set(sym, new Map()).get(sym)!;
+		if (!RequestStores.has(sym)) {
+			RequestStores.set(sym, new Map());
+		}
+		return RequestStores.get(sym)!;
+	}
+};
+
+export const getStateMap = (): Map<string, unknown> | undefined => {
+	try {
+		return getRequestContext();
+	} catch {
+		return undefined;
 	}
 };
 
@@ -41,6 +52,13 @@ const getBrowserState = <T>(key: string, initial: T) => {
 export const createRawState = <T>(key: string, initial: () => T): { value: T } => {
 	if (browser) {
 		let state = $state(getBrowserState(key, initial()));
+
+		const callback = (newValue: unknown) => {
+			state = newValue as T;
+		};
+
+		registerStateUpdate(key, callback);
+
 		return {
 			get value() {
 				return state;
@@ -68,7 +86,13 @@ export const createRawState = <T>(key: string, initial: () => T): { value: T } =
 
 export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 	if (browser) {
-		return writable<T>(getBrowserState(key, initial()));
+		const state = writable<T>(getBrowserState(key, initial()));
+		const callback = (newValue: unknown) => {
+			state.set(newValue as T);
+		};
+
+		registerStateUpdate(key, callback);
+		return state;
 	}
 
 	const map = getRequestContext();
@@ -76,17 +100,13 @@ export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 
 	if (!map.has(key)) map.set(key, structuredClone(initial()));
 
-	//const subscribers: Set<(val: T) => void> = new Set();
-
 	return {
 		subscribe(run) {
 			run(map.get(key) as T);
-			//subscribers.add(run);
 			return () => {};
 		},
 		set(val: T) {
 			map.set(key, val);
-			//subscribers.forEach((fn) => fn(val));
 		},
 		update(updater) {
 			const oldVal = map.get(key) as T;

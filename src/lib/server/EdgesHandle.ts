@@ -1,9 +1,10 @@
-import { stateSerialize } from '../store/State.svelte.js';
+import { stateSerialize, getStateMap } from '../store/State.svelte.js';
 import { AsyncLocalStorage } from 'async_hooks';
 import RequestContext, { type ContextData } from '../context/Context.js';
 import type { RequestEvent } from '@sveltejs/kit';
 
 const storage = new AsyncLocalStorage<ContextData>();
+const textEncoder = new TextEncoder();
 
 type EdgesHandle = (
 	event: RequestEvent,
@@ -44,12 +45,46 @@ export const edgesHandle: EdgesHandle = async (event, callback, silentChromeDevt
 		if (silentChromeDevtools && event.url.pathname === '/.well-known/appspecific/com.chrome.devtools.json') {
 			return new Response(null, { status: 204 });
 		}
-		return callback({
+
+		const response = await callback({
 			edgesEvent: event,
 			serialize: (html: string) => {
 				if (!html) return html ?? '';
 				return html.replace('</body>', `${stateSerialize()}</body>`);
 			}
 		});
+
+		const contentType = response.headers.get('content-type');
+		if (contentType?.includes('application/json')) {
+			try {
+				const clonedResponse = response.clone();
+				const json = await clonedResponse.json();
+				const stateMap = getStateMap();
+				if (stateMap && stateMap.size > 0) {
+					const stateObj: Record<string, unknown> = {};
+					for (const [key, value] of stateMap) {
+						stateObj[key] = value;
+					}
+					const modifiedJson = {
+						...json,
+						__edges_state__: stateObj
+					};
+
+					const modifiedBody = JSON.stringify(modifiedJson);
+					const newHeaders = new Headers(response.headers);
+					newHeaders.set('content-length', String(textEncoder.encode(modifiedBody).length));
+
+					return new Response(modifiedBody, {
+						status: response.status,
+						statusText: response.statusText,
+						headers: newHeaders
+					});
+				}
+			} catch {
+				// Failed to inject state - return original response
+			}
+		}
+
+		return response;
 	});
 };

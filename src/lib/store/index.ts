@@ -1,1 +1,1 @@
-export { createState, createRawState, createDerivedState } from './State.svelte.js';
+export { createState, createRawState, createDerivedState, getStateMap } from './State.svelte.js';

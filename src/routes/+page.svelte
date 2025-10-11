@@ -66,3 +66,4 @@
 
 <button onclick={() => update()}>check injection</button>
 <button onclick={() => changeName()}>change name</button>
+<a href="/second-route">second</a>

@@ -26,23 +26,17 @@ npm install edges-svelte
 
 ## Setup
 
-To enable **EdgeS**, wrap your SvelteKit `handle` hook and serialize the state in `transformPageChunks`:
+To enable **EdgeS** install edgesPlugin, it will wrap your SvelteKit `handle` hook with AsyncLocalStorage:
 
 ```ts
-// hooks.server.ts
-import { dev } from '$app/environment';
-import { edgesHandle } from 'edges-svelte/server';
+// vite.config.ts
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+import { edgesPlugin } from 'edges-svelte/plugin';
 
-export const handle: Handle = async ({ event, resolve }) => {
-	return edgesHandle(
-		event,
-		({ serialize, edgesEvent }) => {
-			//...Your handle code, use edgesEvent as a default svelte event (RequestEvent)
-			return resolve(edgesEvent, { transformPageChunk: ({ html }) => serialize(html) });
-		},
-		dev
-	);
-};
+export default defineConfig({
+	plugins: [sveltekit(), edgesPlugin()]
+});
 ```
 
 ---
@@ -190,30 +184,7 @@ While createStore provides state primitives (createState, createDerivedState, cr
 | Feature                                                                          | Import from           |
 | -------------------------------------------------------------------------------- | --------------------- |
 | `createStore`, `createStoreFactory`, `createPresenter`, `createPresenterFactory` | `edges-svelte`        |
-| `edgesHandle`                                                                    | `edges-svelte/server` |
-
----
-
-## About `edgesHandle`
-
-```ts
-/**
- * Wraps request handling in an AsyncLocalStorage context and provides a `serialize` function
- * for injecting state into the HTML response.
- *
- * @param event - The SvelteKit RequestEvent for the current request.
- * @param callback - A function that receives the edgesEvent and a serialize function,
- *   and expects resolve of edgesEvent as a return result.
- * @param silentChromeDevtools - If true, intercepts requests to
- *   `/.well-known/appspecific/com.chrome.devtools.json` (triggered by Chrome DevTools)
- *   and returns a 204 No Content response just to avoid spamming logs.
- */
-type EdgesHandle = (
-	event: RequestEvent,
-	callback: (params: { edgesEvent: RequestEvent; serialize: (html: string) => string }) => Promise<Response> | Response,
-	silentChromeDevtools?: boolean
-) => Promise<Response>;
-```
+| `edgesPlugin`                                                                    | `edges-svelte/plugin` |
 
 ---
 

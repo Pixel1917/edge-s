@@ -1,24 +1,25 @@
 import { testProvider } from './TestProvider.js';
 import { secondTestProvider } from './SecondTestProvider.js';
+import { RequestContext } from '$lib/context/index.js';
 
 export const load = async () => {
 	// Test ssr-safety
 	const provider = testProvider();
 	const unsub = provider.collection.subscribe((val) => {
-		console.log(val);
 		return val;
 	});
 	unsub();
 	const unsub2 = provider.someState.subscribe((val) => {
-		console.log(val);
 		return val;
 	});
 	unsub2();
-	provider.updateAction(Math.random());
+	const rand = Math.random();
+	console.log(rand);
+	provider.updateAction(rand);
 	provider.updateAction(Math.random());
 
 	//second provider
 	const secondProvider = secondTestProvider();
-	console.log(secondProvider.user);
 	await secondProvider.setUser();
+	console.log(RequestContext.current());
 };
