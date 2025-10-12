@@ -23,6 +23,8 @@
 	};
 </script>
 
+<h1>Welcome</h1>
+
 {someState1.value?.name}
 
 <button onclick={() => upd()}>upd</button>

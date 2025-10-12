@@ -6,14 +6,14 @@ export interface ContextData {
 	symbol?: symbol;
 	data: {
 		providers?: Map<string, unknown>;
-		[p: string]: unknown;
-	};
+		boundary?: Map<string, unknown>;
+	} & App.ContextDataExtended;
 }
 
 export default {
 	current(): ContextData {
 		if (!browser) {
-			throw new Error('AsyncLocalStorage has not been initialized');
+			throw new Error('[edges] AsyncLocalStorage not initialized');
 		}
 		return { data: {} };
 	}

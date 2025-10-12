@@ -7,7 +7,7 @@ const createInjected = createStoreFactory({
 	}
 });
 
-export const injectedTestProvider = createInjected('factoryProvider', ({ createRawState, log }) => {
+export const injectedTestProvider = createInjected(({ createRawState, log }) => {
 	const someState = createRawState(55);
 
 	const update = () => {

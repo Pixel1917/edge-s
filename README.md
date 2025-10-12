@@ -47,8 +47,7 @@ export default defineConfig({
 
 ```ts
 import { createStore } from 'edges-svelte';
-// First argument is a unique name. Each store must havew a unique name.
-const myStore = createStore('MyStore', ({ createState, createDerivedState }) => {
+const myStore = createStore(({ createState, createDerivedState }) => {
 	// createState creates a writable, SSR-safe store with a unique key
 	const collection = createState<number[]>([]);
 	// createDerivedState creates a derived store, SSR-safe as well
@@ -88,7 +87,7 @@ const myStore = createStore('MyStore', ({ createState, createDerivedState }) => 
 Stores are cached per request by their unique name (cache key). Calling the same store multiple times in the same request returns the cached instance.
 
 ```ts
-const myCachedStore = createStore('MyCachedStore', ({ createState }) => {
+const myCachedStore = createStore(({ createState }) => {
 	const data = createState(() => 'cached data');
 	return { data };
 });
@@ -148,12 +147,12 @@ counter.value += 1;
 
 ## Dependency Injection
 
-You can inject dependencies into providers with `createStoreFactory`:
+You can inject dependencies into stores with `createStoreFactory`:
 
 ```ts
 const withDeps = createStoreFactory({ user: getUserFromSession });
 
-const useUserStore = withDeps('UserStore', ({ user, createState }) => {
+const useUserStore = withDeps(({ user, createState }) => {
 	const userState = createState(user);
 	return { userState };
 });

@@ -1,6 +1,5 @@
 import { testProvider } from './TestProvider.js';
 import { secondTestProvider } from './SecondTestProvider.js';
-import { RequestContext } from '$lib/context/index.js';
 
 export const load = async () => {
 	// Test ssr-safety
@@ -21,5 +20,4 @@ export const load = async () => {
 	//second provider
 	const secondProvider = secondTestProvider();
 	await secondProvider.setUser();
-	console.log(RequestContext.current());
 };

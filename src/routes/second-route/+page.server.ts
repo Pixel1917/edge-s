@@ -17,5 +17,9 @@ export const actions = {
 			id: 555,
 			name: 'User from action'
 		};
+	},
+	undField: async () => {
+		const provider = secondTestProvider();
+		provider.user.value = undefined;
 	}
 };

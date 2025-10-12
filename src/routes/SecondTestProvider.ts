@@ -1,8 +1,21 @@
 import { createStore } from '$lib/provider/index.js';
 
-export const secondTestProvider = createStore('secondTestProvider', ({ createState, createDerivedState, createRawState }) => {
+type UserType = {
+	id: number;
+	name: string;
+	settings?: {
+		theme?: string;
+		notifications?: boolean;
+		nested?: {
+			deep?: string;
+			veryDeep?: number;
+		};
+	};
+};
+
+export const secondTestProvider = createStore(({ createState, createDerivedState, createRawState }) => {
 	const posts = createState<{ id: number; name: string }[]>([{ id: 1, name: 'base-post' }]);
-	const user = createRawState<null | { id: number; name: string }>(null);
+	const user = createRawState<UserType | null | undefined>(null);
 	const collectionLengthDoubled = createDerivedState<[typeof posts], number>([posts], ([$collection]) => {
 		return $collection.length * 2;
 	});
@@ -15,12 +28,52 @@ export const secondTestProvider = createStore('secondTestProvider', ({ createSta
 	};
 
 	const setUser = async () => {
-		user.value = { id: 1, name: 'John Doe' };
+		user.value = {
+			id: 1,
+			name: 'John Doe',
+			settings: {
+				theme: 'dark',
+				notifications: true,
+				nested: {
+					deep: 'value',
+					veryDeep: 42
+				}
+			}
+		};
 	};
 
 	const unsetUser = () => {
 		user.value = null;
 	};
 
-	return { posts, user, addPost, postsLengthDoubled: collectionLengthDoubled, setUser, unsetUser };
+	// Test undefined at different levels
+	const setUserWithUndefined = () => {
+		user.value = undefined; // Top level undefined
+	};
+
+	const setUserWithNestedUndefined = () => {
+		user.value = {
+			id: 2,
+			name: 'Jane',
+			settings: {
+				theme: undefined, // Nested undefined
+				notifications: true,
+				nested: {
+					deep: undefined, // Deep nested undefined
+					veryDeep: undefined
+				}
+			}
+		};
+	};
+
+	return {
+		posts,
+		user,
+		addPost,
+		postsLengthDoubled: collectionLengthDoubled,
+		setUser,
+		unsetUser,
+		setUserWithUndefined,
+		setUserWithNestedUndefined
+	};
 });
