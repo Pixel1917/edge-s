@@ -47,7 +47,7 @@ export default defineConfig({
 
 ```ts
 import { createStore } from 'edges-svelte';
-const myStore = createStore(({ createState, createDerivedState }) => {
+const myStore = createStore('MyUniqueStoreName', ({ createState, createDerivedState }) => {
 	// createState creates a writable, SSR-safe store with a unique key
 	const collection = createState<number[]>([]);
 	// createDerivedState creates a derived store, SSR-safe as well
@@ -87,7 +87,7 @@ const myStore = createStore(({ createState, createDerivedState }) => {
 Stores are cached per request by their unique name (cache key). Calling the same store multiple times in the same request returns the cached instance.
 
 ```ts
-const myCachedStore = createStore(({ createState }) => {
+const myCachedStore = createStore('MyUniqueStoreName', ({ createState }) => {
 	const data = createState(() => 'cached data');
 	return { data };
 });
@@ -255,11 +255,11 @@ if (browser && dev) {
 
 ## Minification-safe stores
 
-### Method 1: Pass key as first argument
+### Pass key as first argument
 
 ```typescript
 // Super clean - just pass the unique key as first argument!
-export const useUserStore = createStore('user-store', ({ createState, createRawState }) => {
+export const useUserStore = createStore('MyUniqueStoreName', ({ createState, createRawState }) => {
 	const user = createRawState<User | null>(null);
 	const isLoggedIn = createState(false);
 
@@ -267,13 +267,15 @@ export const useUserStore = createStore('user-store', ({ createState, createRawS
 });
 
 // Same for presenters
-export const useAuthPresenter = createPresenter('auth-presenter', () => {
+export const useAuthPresenter = createPresenter('MyUniquePresenterName', () => {
 	const login = async (credentials) => {};
 	const logout = () => {};
 
 	return { login, logout };
 });
 ```
+
+You can skip specifying a unique key and pass the factory as the first argument — edges will generate a unique key for you using its internal algorithms. The chances of collisions are minimal, but they still exist.
 
 ---
 
