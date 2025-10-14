@@ -214,9 +214,20 @@ export function createStore<T, I extends Record<string, unknown> = Record<string
  * Store factory
  */
 export const createStoreFactory = <I extends Record<string, unknown>>(inject: I) => {
-	return function <T>(factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T): () => T {
-		return createStore(factory, inject);
-	};
+	function storeFactory<T>(factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T): () => T;
+	function storeFactory<T>(name: string, factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T): () => T;
+	function storeFactory<T>(
+		nameOrFactory: string | ((args: StoreDeps & NoConflict<I, StoreDeps>) => T),
+		factory?: (args: StoreDeps & NoConflict<I, StoreDeps>) => T
+	): () => T {
+		if (typeof nameOrFactory === 'string') {
+			return createStore(nameOrFactory, factory!, inject);
+		} else {
+			return createStore(nameOrFactory, inject);
+		}
+	}
+
+	return storeFactory;
 };
 
 /**
@@ -262,7 +273,15 @@ export function createPresenter<T, I extends Record<string, unknown> = Record<st
  * Presenter factory
  */
 export const createPresenterFactory = <I extends Record<string, unknown>>(inject: I) => {
-	return function <T>(factory: (args: I) => T): () => T {
-		return createPresenter(factory, inject);
-	};
+	function presenterFactory<T>(factory: (args: I) => T): () => T;
+	function presenterFactory<T>(name: string, factory: (args: I) => T): () => T;
+	function presenterFactory<T>(nameOrFactory: string | ((args: I) => T), factory?: (args: I) => T): () => T {
+		if (typeof nameOrFactory === 'string') {
+			return createPresenter(nameOrFactory, factory!, inject);
+		} else {
+			return createPresenter(nameOrFactory, inject);
+		}
+	}
+
+	return presenterFactory;
 };
