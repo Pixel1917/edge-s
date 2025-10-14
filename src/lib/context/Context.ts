@@ -5,16 +5,29 @@ export interface ContextData {
 	event?: RequestEvent;
 	symbol?: symbol;
 	data: {
+		message?: string;
 		providers?: Map<string, unknown>;
-		boundary?: Map<string, unknown>;
+		providersAutoKeyCache?: WeakMap<(...args: unknown[]) => unknown, string>;
+		providersAutoKeyCounters?: Map<string, number>;
 	} & App.ContextDataExtended;
 }
 
-export default {
-	current(): ContextData {
-		if (!browser) {
-			throw new Error('[edges] AsyncLocalStorage not initialized');
-		}
-		return { data: {} };
+class RequestContextManager {
+	private _currentGetter?: () => ContextData;
+
+	init(getter: () => ContextData) {
+		this._currentGetter = getter;
 	}
-};
+
+	current(): ContextData {
+		if (browser) {
+			return { data: { message: 'Do not use request context on client side' } };
+		}
+		if (!this._currentGetter) {
+			throw new Error('[edges] RequestContext not initialized. Did you forget to add edgesPlugin()?');
+		}
+		return this._currentGetter();
+	}
+}
+
+export const RequestContext = new RequestContextManager();

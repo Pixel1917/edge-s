@@ -1,17 +1,46 @@
 import type { Plugin } from 'vite';
 
+export interface EdgesPluginOptions {
+	/**
+	 * Set to `true` when developing the edges-svelte package itself.
+	 * This uses `$lib/server` imports. For all other cases, use `false` (default).
+	 * @default false
+	 */
+	isPackageDevelopment?: boolean;
+
+	/**
+	 * State compression options
+	 */
+	compression?: {
+		/**
+		 * Enable compression for large state objects
+		 * @default false
+		 */
+		enabled?: boolean;
+
+		/**
+		 * Minimum size in bytes before compression is applied
+		 * @default 1024 (1KB)
+		 */
+		threshold?: number;
+	};
+
+	/**
+	 * Silence Chrome DevTools requests
+	 * @default true
+	 */
+	silentChromeDevtools?: boolean;
+}
+
 /**
  * Vite plugin that automatically wraps the SvelteKit handle hook with edgesHandle.
  *
  * This eliminates the need to manually wrap your handle function, while still allowing
  * full customization of the handle logic.
  *
- * @param isPackageDevelopment - Set to `true` when developing the edges-svelte package itself.
- *   This uses `$lib/server` imports. For all other cases (production or consuming the package), use `false` (default).
- *
  * @example
  * ```ts
- * // vite.config.ts (consuming the package)
+ * // vite.config.ts - Basic usage
  * import { sveltekit } from '@sveltejs/kit/vite';
  * import { defineConfig } from 'vite';
  * import { edgesPlugin } from 'edges-svelte/plugin';
@@ -23,11 +52,27 @@ import type { Plugin } from 'vite';
  *
  * @example
  * ```ts
- * // vite.config.ts (developing edges-svelte package)
+ * // vite.config.ts - With compression
+ * export default defineConfig({
+ *   plugins: [
+ *     sveltekit(),
+ *     edgesPlugin({
+ *       compression: {
+ *         enabled: true,
+ *         threshold: 2048  // Compress states larger than 2KB
+ *       }
+ *     })
+ *   ]
+ * });
+ * ```
+ *
+ * @example
+ * ```ts
+ * // vite.config.ts - Package development mode
  * import { edgesPlugin } from './src/lib/plugin/index.js';
  *
  * export default defineConfig({
- *   plugins: [sveltekit(), edgesPlugin(true)] // true = package development mode
+ *   plugins: [sveltekit(), edgesPlugin({ isPackageDevelopment: true })]
  * });
  * ```
  *
@@ -47,7 +92,11 @@ import type { Plugin } from 'vite';
  * };
  * ```
  */
-export function edgesPlugin(isPackageDevelopment = false): Plugin {
+export function edgesPlugin(options?: EdgesPluginOptions | boolean): Plugin {
+	// Backward compatibility: if boolean passed, treat as isPackageDevelopment
+	const config: EdgesPluginOptions = typeof options === 'boolean' ? { isPackageDevelopment: options } : options || {};
+
+	const { isPackageDevelopment = false, compression = {}, silentChromeDevtools = true } = config;
 	return {
 		name: 'edges-auto-handle',
 		enforce: 'pre', // Run before SvelteKit
@@ -78,8 +127,14 @@ export function edgesPlugin(isPackageDevelopment = false): Plugin {
 			// Check if user defined a handle export
 			const hasHandleExport = /export\s+const\s+handle/.test(code);
 
+			// Build compression options string
+			const compressionOptions = compression.enabled ? `, { compress: true, compressionThreshold: ${compression.threshold || 1024} }` : '';
+
+			// Build silent devtools option
+			const silentOption = silentChromeDevtools ? '' : `, false`;
+
 			if (!hasHandleExport) {
-				// No handle defined - create default
+				// No handle defined - create default with compression options
 				return {
 					code:
 						`// __EDGES_AUTO_WRAPPED__\n` +
@@ -87,18 +142,20 @@ export function edgesPlugin(isPackageDevelopment = false): Plugin {
 						code +
 						`\n\n` +
 						`export const handle = edgesHandle(({ serialize, edgesEvent, resolve }) => ` +
-						`resolve(edgesEvent, { transformPageChunk: ({ html }) => serialize(html) }));`,
+						`resolve(edgesEvent, { transformPageChunk: ({ html }) => serialize(html${compressionOptions}) })${silentOption});`,
 					map: null
 				};
 			}
 
-			// User defined a handle - wrap it
+			// User defined a handle - wrap it with options
 			const wrappedCode =
 				`// __EDGES_AUTO_WRAPPED__\n` +
 				`import { __autoWrapHandle } from '${importPath}';\n\n` +
 				code.replace(/export\s+const\s+handle/, 'const __userHandle') +
 				`\n\n` +
-				`export const handle = __autoWrapHandle(__userHandle);`;
+				`const __compressionOptions = ${JSON.stringify({ compress: compression.enabled, compressionThreshold: compression.threshold })};\n` +
+				`const __silentChromeDevtools = ${silentChromeDevtools};\n` +
+				`export const handle = __autoWrapHandle(__userHandle, __compressionOptions, __silentChromeDevtools);`;
 
 			return {
 				code: wrappedCode,

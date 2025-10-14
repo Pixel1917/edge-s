@@ -53,48 +53,131 @@ export function processEdgesState(edgesState: Record<string, unknown>) {
 
 if (browser) {
 	const originalFetch = window.fetch;
-	let processingResponse = false;
+
+	const parseHeaders = (headers?: Headers | HeadersInit) => {
+		const parsedHeaders: Record<string, string> = {};
+		switch (true) {
+			case headers instanceof Headers:
+				headers.forEach((value, key) => {
+					parsedHeaders[key] = value;
+				});
+				return parsedHeaders;
+			case headers && typeof headers === 'object':
+				Object.entries(headers).forEach(([key, value]) => {
+					parsedHeaders[key] = value;
+				});
+				return parsedHeaders;
+			default:
+				return parsedHeaders;
+		}
+	};
 
 	window.fetch = async function (...args) {
+		const [input, init] = args;
+		let reqInfo: { url: string; headers: Record<string, string> } = { url: '', headers: {} };
+
+		if (typeof input === 'string') {
+			reqInfo = { url: input, headers: parseHeaders(init?.headers) };
+		} else if (input instanceof Request) {
+			reqInfo = { url: input.url, headers: parseHeaders(input.headers) };
+		} else if (input instanceof URL) {
+			reqInfo = { url: input.href, headers: parseHeaders(init?.headers) };
+		}
+
+		const isSvelteKitRequest =
+			(init as Record<string, unknown>).__sveltekit_fetch__ || reqInfo.headers['x-sveltekit-action'] || reqInfo.url.includes('__data.json');
+
 		const response = await originalFetch.apply(this, args);
 
-		if (processingResponse) {
+		if (!isSvelteKitRequest) {
 			return response;
 		}
 
-		const [input, init] = args;
-		const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
-		const isSvelteKitGet = (init as Record<string, unknown>).__sveltekit_fetch__ || url.includes('__data.json');
-		const isSvelteKitPost = input instanceof URL && input.search.startsWith('?/');
-		if (isSvelteKitGet || isSvelteKitPost) {
-			const contentType = response.headers.get('content-type');
-
-			if (contentType?.includes('application/json')) {
-				processingResponse = true;
-
-				try {
-					const cloned = response.clone();
-					const text = await cloned.text();
-
-					if (text) {
-						try {
-							const json = JSON.parse(text);
-							if (json && typeof json === 'object' && '__edges_state__' in json) {
-								processEdgesState(json.__edges_state__ as Record<string, unknown>);
-							}
-						} catch {
-							// ignore no JSON or parse Errors
-						}
-					}
-				} catch {
-					// Ошибка клонирования или чтения - игнорируем
-				} finally {
-					processingResponse = false;
-				}
-			}
+		if (!response.headers.get('content-type')?.includes('application/json')) {
+			return response;
 		}
 
-		return response;
+		const interceptEdgesStateFromResponse = (response: Response): Response => {
+			if (!response.body) return response;
+			if (init?.method === 'POST') {
+				const originalText = response.text.bind(response);
+
+				response.text = async function () {
+					const text = await originalText();
+					if (text.includes('__edges_state__')) {
+						try {
+							const parsed = JSON.parse(text);
+							if (parsed.__edges_state__) {
+								processEdgesState(parsed.__edges_state__);
+							}
+						} catch {
+							// ignore parsing errors
+						}
+					}
+					return text;
+				};
+			}
+			const originalGetReader = response.body.getReader.bind(response.body);
+
+			response.body.getReader = function <D extends ArrayBufferView<ArrayBufferLike>, T extends ReadableStreamDefaultReader<D>>(
+				opts?: ReadableStreamGetReaderOptions
+			) {
+				const reader = originalGetReader(opts) as T;
+
+				if (!('read' in reader)) return reader;
+
+				const originalRead = reader.read.bind(reader);
+				const decoder = new TextDecoder();
+
+				let buffer = '';
+				let found = false;
+				let depth = 0;
+				let capture = '';
+
+				reader.read = async function () {
+					const result = await originalRead();
+					if (result.done || found) return result;
+
+					buffer += decoder.decode(result.value, { stream: true });
+
+					const idx = buffer.indexOf('"__edges_state__"');
+					if (idx !== -1) {
+						const braceStart = buffer.indexOf('{', idx);
+						if (braceStart !== -1) {
+							for (let i = braceStart; i < buffer.length; i++) {
+								const ch = buffer[i];
+								if (ch === '{') {
+									if (depth++ === 0) capture = '';
+								}
+								if (depth > 0) capture += ch;
+								if (ch === '}') {
+									depth--;
+									if (depth === 0) {
+										try {
+											const parsed = JSON.parse(capture);
+											processEdgesState(parsed);
+											found = true;
+										} catch {
+											// waiting for next iteration
+										}
+										break;
+									}
+								}
+							}
+						}
+						const MAX_BUFFER = Math.max(8192, capture.length * 2);
+						if (buffer.length > MAX_BUFFER) buffer = buffer.slice(-MAX_BUFFER / 2);
+					}
+
+					return result;
+				};
+				return reader;
+			};
+
+			return response;
+		};
+
+		return interceptEdgesStateFromResponse(response);
 	};
 
 	if (typeof MutationObserver !== 'undefined') {
@@ -126,5 +209,9 @@ if (browser) {
 			childList: true,
 			subtree: true
 		});
+		if (typeof window !== 'undefined') {
+			window.addEventListener('beforeunload', () => observer.disconnect());
+			window.addEventListener('pagehide', () => observer.disconnect());
+		}
 	}
 }

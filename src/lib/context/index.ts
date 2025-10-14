@@ -1,1 +1,1 @@
-export { default as RequestContext, type ContextData } from './Context.js';
+export { RequestContext, type ContextData } from './Context.js';

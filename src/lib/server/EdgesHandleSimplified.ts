@@ -1,8 +1,13 @@
 import type { Handle, RequestEvent, ResolveOptions } from '@sveltejs/kit';
 import { edgesHandle as originalEdgesHandle } from './EdgesHandle.js';
 
+interface SerializeOptions {
+	compress?: boolean;
+	compressionThreshold?: number;
+}
+
 type SimplifiedCallback = (params: {
-	serialize: (html: string) => string;
+	serialize: (html: string, options?: SerializeOptions) => string;
 	edgesEvent: RequestEvent;
 	resolve: (event: RequestEvent, opts?: ResolveOptions) => Response | Promise<Response>;
 }) => Response | Promise<Response>;

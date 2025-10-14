@@ -17,6 +17,7 @@ export const actions = {
 			id: 555,
 			name: 'User from action'
 		};
+		provider.addPost();
 	},
 	undField: async () => {
 		const provider = secondTestProvider();

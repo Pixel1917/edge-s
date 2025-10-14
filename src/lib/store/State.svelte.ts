@@ -1,4 +1,4 @@
-import RequestContext from '../context/Context.js';
+import { RequestContext } from '../context/Context.js';
 import { browser } from '$app/environment';
 import { derived, type Readable, type Writable, writable } from 'svelte/store';
 import { registerStateUpdate } from '$lib/client/NavigationSync.svelte.js';
@@ -11,6 +11,7 @@ const NULL_MARKER = '__EDGES_NULL__';
 declare global {
 	interface Window {
 		__SAFE_SSR_STATE__?: Map<string, unknown>;
+		__EDGES_DEVTOOLS__: Record<string, unknown>;
 	}
 }
 
@@ -39,16 +40,33 @@ const safeReplacer = (key: string, value: unknown): unknown => {
 // 	return value;
 // };
 
-export const stateSerialize = (): string => {
+export const stateSerialize = (options?: { compress?: boolean; threshold?: number }): string => {
 	const map = getRequestContext();
 	if (!map || map.size === 0) return '';
 
 	const entries: string[] = [];
+	const shouldCompress = options?.compress ?? false;
+	const threshold = options?.threshold ?? 1024; // 1KB default
 
 	for (const [key, value] of map) {
 		const serialized = JSON.stringify(value, safeReplacer);
-		const escaped = serialized.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
-		entries.push(`window.__SAFE_SSR_STATE__.set('${key}',JSON.parse('${escaped}',window.__EDGES_REVIVER__))`);
+
+		// Check if we should compress this entry
+		if (shouldCompress && serialized.length > threshold) {
+			// For large values, use base64 encoding as a simple compression
+			// In production, you might want to use actual compression like gzip
+			const encoded = btoa(new TextEncoder().encode(serialized).reduce((acc, byte) => acc + String.fromCharCode(byte), ''));
+			entries.push(`{
+				const binary = atob('${encoded}');
+				const bytes = new Uint8Array(binary.length);
+				for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+				const decoded = new TextDecoder().decode(bytes);
+				window.__SAFE_SSR_STATE__.set('${key}', JSON.parse(decoded, window.__EDGES_REVIVER__));
+			}`);
+		} else {
+			const escaped = serialized.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
+			entries.push(`window.__SAFE_SSR_STATE__.set('${key}',JSON.parse('${escaped}',window.__EDGES_REVIVER__))`);
+		}
 	}
 
 	const reviverCode = `window.__EDGES_REVIVER__=function(k,v){if(v&&typeof v==='object'){if('${UNDEFINED_MARKER}' in v)return undefined;if('${NULL_MARKER}' in v)return null}return v};`;

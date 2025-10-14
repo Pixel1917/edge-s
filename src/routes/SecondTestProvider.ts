@@ -13,7 +13,7 @@ type UserType = {
 	};
 };
 
-export const secondTestProvider = createStore(({ createState, createDerivedState, createRawState }) => {
+export const secondTestProvider = createStore('SecondTestProvider', ({ createState, createDerivedState, createRawState }) => {
 	const posts = createState<{ id: number; name: string }[]>([{ id: 1, name: 'base-post' }]);
 	const user = createRawState<UserType | null | undefined>(null);
 	const collectionLengthDoubled = createDerivedState<[typeof posts], number>([posts], ([$collection]) => {
@@ -22,7 +22,7 @@ export const secondTestProvider = createStore(({ createState, createDerivedState
 
 	const addPost = () => {
 		posts.update((n) => {
-			n = [...n, { id: n.length + 1, name: 'Random post name' }];
+			n = [...n, { id: n.length + 1, name: 'a'.repeat(1000000) }];
 			return n;
 		});
 	};
