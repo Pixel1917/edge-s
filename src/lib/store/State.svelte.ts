@@ -1,5 +1,5 @@
 import { RequestContext } from '../context/Context.js';
-import { browser } from '$app/environment';
+import { browser } from '../utils/environment.js';
 import { derived, type Readable, type Writable, writable } from 'svelte/store';
 import { registerStateUpdate } from '$lib/client/NavigationSync.svelte.js';
 

@@ -4,7 +4,7 @@ import {
 	createRawState as BaseCreateRawState
 } from '../store/index.js';
 import { RequestContext } from '../context/index.js';
-import { browser } from '$app/environment';
+import { browser } from '../utils/environment.js';
 import { DevTools } from '../utils/dev.js';
 import type { Writable } from 'svelte/store';
 

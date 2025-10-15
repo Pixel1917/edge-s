@@ -1,4 +1,4 @@
-import { browser, dev } from '$app/environment';
+import { browser, dev } from './environment.js';
 import type { UnknownFunc } from '../types.js';
 
 const seenFactories = new WeakSet<UnknownFunc>();

@@ -1,4 +1,4 @@
-import { browser } from '$app/environment';
+import { browser } from '../utils/environment.js';
 
 const stateUpdateCallbacks = new Map<string, (value: unknown) => void>();
 
