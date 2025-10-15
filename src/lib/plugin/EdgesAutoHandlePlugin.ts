@@ -133,13 +133,45 @@ export function edgesPlugin(options?: EdgesPluginOptions | boolean): Plugin {
 			// Build silent devtools option
 			const silentOption = silentChromeDevtools ? '' : `, false`;
 
+			// Find the position after the last import statement to preserve import order
+			const findImportInsertPosition = (sourceCode: string): number => {
+				const lines = sourceCode.split('\n');
+				let lastImportIndex = -1;
+
+				for (let i = 0; i < lines.length; i++) {
+					const line = lines[i].trim();
+					// Check for import statements (including type imports and dynamic imports)
+					if (line.startsWith('import ') || (line.startsWith('export ') && line.includes(' from '))) {
+						lastImportIndex = i;
+					}
+					// Stop at first non-import, non-comment, non-empty line after imports started
+					else if (lastImportIndex !== -1 && line && !line.startsWith('//') && !line.startsWith('/*') && !line.startsWith('*')) {
+						break;
+					}
+				}
+
+				if (lastImportIndex === -1) {
+					// No imports found, insert at the beginning
+					return 0;
+				}
+
+				// Calculate character position after the last import line
+				const position = lines.slice(0, lastImportIndex + 1).join('\n').length;
+				return position > 0 ? position + 1 : 0; // +1 for the newline after last import
+			};
+
 			if (!hasHandleExport) {
 				// No handle defined - create default with compression options
+				const insertPos = findImportInsertPosition(code);
+				const beforeImports = code.slice(0, insertPos);
+				const afterImports = code.slice(insertPos);
+
 				return {
 					code:
+						beforeImports +
 						`// __EDGES_AUTO_WRAPPED__\n` +
 						`import { edgesHandle } from '${importPath}';\n\n` +
-						code +
+						afterImports +
 						`\n\n` +
 						`export const handle = edgesHandle(({ serialize, edgesEvent, resolve }) => ` +
 						`resolve(edgesEvent, { transformPageChunk: ({ html }) => serialize(html${compressionOptions}) })${silentOption});`,
@@ -148,10 +180,15 @@ export function edgesPlugin(options?: EdgesPluginOptions | boolean): Plugin {
 			}
 
 			// User defined a handle - wrap it with options
+			const insertPos = findImportInsertPosition(code);
+			const beforeImports = code.slice(0, insertPos);
+			const afterImports = code.slice(insertPos);
+
 			const wrappedCode =
+				beforeImports +
 				`// __EDGES_AUTO_WRAPPED__\n` +
 				`import { __autoWrapHandle } from '${importPath}';\n\n` +
-				code.replace(/export\s+const\s+handle/, 'const __userHandle') +
+				afterImports.replace(/export\s+const\s+handle/, 'const __userHandle') +
 				`\n\n` +
 				`const __compressionOptions = ${JSON.stringify({ compress: compression.enabled, compressionThreshold: compression.threshold })};\n` +
 				`const __silentChromeDevtools = ${silentChromeDevtools};\n` +
