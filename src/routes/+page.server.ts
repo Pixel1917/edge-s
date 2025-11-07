@@ -1,6 +1,5 @@
 import { testProvider } from './TestProvider.js';
 import { secondTestProvider } from './SecondTestProvider.js';
-import { injectedTestProvider } from './FactoryProvider.js';
 
 export const load = async () => {
 	// Test ssr-safety
@@ -21,6 +20,4 @@ export const load = async () => {
 	//second provider
 	const secondProvider = secondTestProvider();
 	await secondProvider.setUser();
-	const inject = injectedTestProvider();
-	inject.update();
 };

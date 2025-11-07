@@ -329,9 +329,52 @@ export const handle = edgesHandle(({ serialize, edgesEvent, resolve }) => {
 | Feature                                                                                                  | Import from           |
 | -------------------------------------------------------------------------------------------------------- | --------------------- |
 | `createStore`, `createStoreFactory`, `createPresenter`, `createPresenterFactory`, `batch`, `transaction` | `edges-svelte`        |
-| `edgesPlugin`                                                                                            | `edges-svelte/plugin` |
+| `edgesPlugin`, `createEdgesPluginFactory`                                                                | `edges-svelte/plugin` |
 | `edgesHandle`                                                                                            | `edges-svelte/server` |
 | `DevTools`                                                                                               | `edges-svelte/dev`    |
+
+---
+
+## Creating Wrapper Packages
+
+If you're building a custom state management solution on top of `edges-svelte`, you can create your own plugin using the factory:
+
+```typescript
+// my-awesome-edges/plugin/index.ts
+import { createEdgesPluginFactory } from 'edges-svelte/plugin';
+
+// Create your plugin with custom package name and server path
+export const myAwesomePlugin = createEdgesPluginFactory(
+	'my-awesome-edges', // Your package name
+	'my-awesome-edges/server' // Your server module path
+);
+```
+
+Then your users can use it just like the original:
+
+```typescript
+// User's vite.config.ts
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+import { myAwesomePlugin } from 'my-awesome-edges/plugin';
+
+export default defineConfig({
+	plugins: [sveltekit(), myAwesomePlugin()]
+});
+```
+
+**For package development/testing:**
+
+```typescript
+// vite.config.ts - when developing edges-svelte itself
+import { createEdgesPluginFactory } from './src/lib/plugin/index.js';
+
+const edgesPluginDev = createEdgesPluginFactory('edges-svelte', '$lib/server');
+
+export default defineConfig({
+	plugins: [sveltekit(), edgesPluginDev()]
+});
+```
 
 ---
 

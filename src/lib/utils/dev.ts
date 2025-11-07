@@ -3,6 +3,8 @@ import type { UnknownFunc } from '../types.js';
 
 const seenFactories = new WeakSet<UnknownFunc>();
 const largeStateWarnings = new Set<string>();
+// Memoize size calculations to avoid repeated JSON.stringify calls
+const sizeCache = new WeakMap<object, number>();
 
 /**
  * Development-mode validations and warnings
@@ -25,14 +27,29 @@ export const DevTools = {
 	},
 
 	/**
-	 * Warns about large state objects
+	 * Get cached size of a value (optimized to avoid repeated JSON.stringify)
+	 */
+	getSize(value: unknown): number {
+		if (typeof value === 'object' && value !== null) {
+			if (sizeCache.has(value)) {
+				return sizeCache.get(value)!;
+			}
+			const size = JSON.stringify(value).length;
+			sizeCache.set(value, size);
+			return size;
+		}
+		return JSON.stringify(value).length;
+	},
+
+	/**
+	 * Warns about large state objects (optimized with memoization)
 	 */
 	warnOnLargeState(key: string, value: unknown): void {
 		if (!dev) return;
 		if (largeStateWarnings.has(key)) return;
 
 		try {
-			const size = JSON.stringify(value).length;
+			const size = this.getSize(value);
 			if (size > 50000) {
 				// 50KB threshold
 				largeStateWarnings.add(key);
@@ -129,7 +146,8 @@ if (browser && dev) {
 
 			for (const [key, value] of stateMap) {
 				try {
-					const size = JSON.stringify(value).length;
+					// Use memoized getSize for better performance
+					const size = DevTools.getSize(value);
 					sizes[key] = size;
 					totalSize += size;
 				} catch {

@@ -1,1 +1,1 @@
-export { edgesPlugin, type EdgesPluginOptions } from './EdgesAutoHandlePlugin.js';
+export { edgesPlugin, createEdgesPluginFactory, type EdgesPluginOptions } from './EdgesAutoHandlePlugin.js';
