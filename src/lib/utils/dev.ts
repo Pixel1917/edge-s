@@ -3,16 +3,9 @@ import type { UnknownFunc } from '../types.js';
 
 const seenFactories = new WeakSet<UnknownFunc>();
 const largeStateWarnings = new Set<string>();
-// Memoize size calculations to avoid repeated JSON.stringify calls
 const sizeCache = new WeakMap<object, number>();
 
-/**
- * Development-mode validations and warnings
- */
 export const DevTools = {
-	/**
-	 * Validates factory uniqueness in development
-	 */
 	validateFactoryUniqueness(factory: UnknownFunc, key: string): void {
 		if (!dev) return;
 
@@ -26,9 +19,6 @@ export const DevTools = {
 		seenFactories.add(factory);
 	},
 
-	/**
-	 * Get cached size of a value (optimized to avoid repeated JSON.stringify)
-	 */
 	getSize(value: unknown): number {
 		if (typeof value === 'object' && value !== null) {
 			if (sizeCache.has(value)) {
@@ -41,9 +31,6 @@ export const DevTools = {
 		return JSON.stringify(value).length;
 	},
 
-	/**
-	 * Warns about large state objects (optimized with memoization)
-	 */
 	warnOnLargeState(key: string, value: unknown): void {
 		if (!dev) return;
 		if (largeStateWarnings.has(key)) return;
@@ -51,7 +38,6 @@ export const DevTools = {
 		try {
 			const size = this.getSize(value);
 			if (size > 50000) {
-				// 50KB threshold
 				largeStateWarnings.add(key);
 				console.warn(
 					`[edges-svelte] Large state detected for key "${key}" (${Math.round(size / 1024)}KB). ` +
@@ -63,9 +49,6 @@ export const DevTools = {
 		}
 	},
 
-	/**
-	 * Validates state mutations
-	 */
 	checkStateMutation(key: string, oldValue: unknown, newValue: unknown): void {
 		if (!dev || !browser) return;
 
@@ -78,9 +61,6 @@ export const DevTools = {
 		}
 	},
 
-	/**
-	 * Performance metrics collection
-	 */
 	measurePerformance<T>(name: string, fn: () => T): T {
 		if (!dev) return fn();
 
@@ -89,16 +69,12 @@ export const DevTools = {
 		const duration = performance.now() - start;
 
 		if (duration > 16) {
-			// Longer than a frame
 			console.warn(`[edges-svelte] Slow operation "${name}" took ${duration.toFixed(2)}ms. ` + `Consider optimizing for better performance.`);
 		}
 
 		return result;
 	},
 
-	/**
-	 * Debug state tree visualization
-	 */
 	visualizeStateTree(stateMap: Map<string, unknown>): void {
 		if (!dev || !browser) return;
 
@@ -123,7 +99,6 @@ export const DevTools = {
 	}
 };
 
-// Export for browser devtools integration
 if (browser && dev) {
 	window.__EDGES_DEVTOOLS__ = {
 		version: '1.3.0',
@@ -146,7 +121,6 @@ if (browser && dev) {
 
 			for (const [key, value] of stateMap) {
 				try {
-					// Use memoized getSize for better performance
 					const size = DevTools.getSize(value);
 					sizes[key] = size;
 					totalSize += size;

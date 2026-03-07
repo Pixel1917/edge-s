@@ -1,11 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 
-/**
- * Mock endpoint that simulates an external API response
- * This mimics https://api.github.com/repos/... style responses
- */
 export const GET: RequestHandler = async () => {
-	// Simulate external API response structure
 	return json({
 		id: 12345,
 		name: 'test-repository',

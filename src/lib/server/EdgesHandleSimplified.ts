@@ -13,16 +13,8 @@ type SimplifiedCallback = (params: {
 }) => Response | Promise<Response>;
 
 /**
- * Simplified wrapper around edgesHandle that provides a more convenient API.
- *
  * @example
  * ```ts
- * // Simple usage with default behavior
- * export const handle = edgesHandle(({ serialize, edgesEvent, resolve }) =>
- *   resolve(edgesEvent, { transformPageChunk: ({ html }) => serialize(html) })
- * );
- *
- * // You can still access resolve for custom logic
  * export const handle = edgesHandle(({ serialize, edgesEvent, resolve }) => {
  *   // Custom logic here
  *   return resolve(edgesEvent, { transformPageChunk: ({ html }) => serialize(html) });

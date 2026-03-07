@@ -39,9 +39,8 @@
 		]);
 	}
 
-	// Test external API call (GitHub)
 	async function testRealExternalAPI() {
-		await testEndpoint('github-api', 'https://api.github.com/repos/anthropics/anthropic-sdk-typescript');
+		await testEndpoint('github-api', 'github-api-url');
 	}
 </script>
 

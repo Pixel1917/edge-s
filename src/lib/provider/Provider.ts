@@ -14,10 +14,8 @@ type NoConflict<I, D> = {
 
 type UnknownFunc = { (...args: unknown[]): unknown; __storeKey__: string; displayName: string };
 
-// Global client cache
 const globalClientCache = new Map<string, unknown>();
 
-// Key auto-generate
 class AutoKeyGenerator {
 	private static cache = new WeakMap<UnknownFunc, string>();
 	private static counters = new Map<string, number>();
@@ -45,9 +43,6 @@ class AutoKeyGenerator {
 
 		if (cache!.has(factory)) return cache!.get(factory)!;
 
-		// Use multiple sources for stable key generation
-		// Priority: displayName > name > toString
-		// This ensures stability even with minification
 		const fnIdentifier = factory.__storeKey__ || factory.displayName || factory.name || factory.toString();
 
 		const hash = this.hash(fnIdentifier);
@@ -63,19 +58,16 @@ class AutoKeyGenerator {
 		}
 		cache!.set(factory, finalKey);
 
-		// Dev mode validation
 		DevTools.validateFactoryUniqueness(factory, finalKey);
 
 		return finalKey;
 	}
 
 	private static hash(str: string): number {
-		// FNV-1a hash algorithm - better distribution than simple sum hash
-		// Provides 50% fewer collisions for typical factory names
-		let hash = 2166136261; // FNV offset basis (32-bit)
+		let hash = 2166136261;
 		for (let i = 0; i < str.length; i++) {
-			hash = (hash ^ str.charCodeAt(i)) * 16777619; // FNV prime
-			hash = hash >>> 0; // Convert to unsigned 32-bit integer
+			hash = (hash ^ str.charCodeAt(i)) * 16777619;
+			hash = hash >>> 0;
 		}
 		return hash;
 	}
@@ -148,22 +140,6 @@ type StoreDeps = {
 	createDerivedState: typeof BaseCreateDerivedState;
 };
 
-/**
- * Creates store with optional name
- * @example
- * // Without key (auto-generated)
- * export const useUserStore = createStore(({ createState }) => {
- *   const user = createState(null);
- *   return { user };
- * });
- *
- * @example
- * // With explicit key (recommended for production)
- * export const useUserStore = createStore('user-store', ({ createState }) => {
- *   const user = createState(null);
- *   return { user };
- * });
- */
 export function createStore<T, I extends Record<string, unknown> = Record<string, unknown>>(
 	factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T,
 	inject?: I
@@ -178,13 +154,11 @@ export function createStore<T, I extends Record<string, unknown> = Record<string
 	factoryOrInject?: ((args: StoreDeps & NoConflict<I, StoreDeps>) => T) | I,
 	inject?: I
 ): () => T {
-	// Handle overloads
 	const isNameProvided = typeof nameOrFactory === 'string';
 	const name = isNameProvided ? nameOrFactory : undefined;
 	const factory = isNameProvided ? (factoryOrInject as (args: StoreDeps & NoConflict<I, StoreDeps>) => T) : nameOrFactory;
 	const injections = isNameProvided ? inject : (factoryOrInject as I);
 
-	// Use provided name or auto-generate
 	const cacheKey = name || AutoKeyGenerator.generate(factory as UnknownFunc);
 
 	return createUiProvider(
@@ -211,9 +185,6 @@ export function createStore<T, I extends Record<string, unknown> = Record<string
 	);
 }
 
-/**
- * Store factory
- */
 export const createStoreFactory = <I extends Record<string, unknown>>(inject: I) => {
 	function storeFactory<T>(factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T): () => T;
 	function storeFactory<T>(name: string, factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T): () => T;
@@ -231,22 +202,6 @@ export const createStoreFactory = <I extends Record<string, unknown>>(inject: I)
 	return storeFactory;
 };
 
-/**
- * Creates presenter with optional name
- * @example
- * // Without key (auto-generated)
- * export const useAuthPresenter = createPresenter(() => {
- *   const login = async () => { ... };
- *   return { login };
- * });
- *
- * @example
- * // With explicit key
- * export const useAuthPresenter = createPresenter('auth-presenter', () => {
- *   const login = async () => { ... };
- *   return { login };
- * });
- */
 export function createPresenter<T, I extends Record<string, unknown> = Record<string, unknown>>(factory: (args: I) => T, inject?: I): () => T;
 export function createPresenter<T, I extends Record<string, unknown> = Record<string, unknown>>(
 	name: string,
@@ -258,21 +213,16 @@ export function createPresenter<T, I extends Record<string, unknown> = Record<st
 	factoryOrInject?: ((args: I) => T) | I,
 	inject?: I
 ): () => T {
-	// Handle overloads
 	const isNameProvided = typeof nameOrFactory === 'string';
 	const name = isNameProvided ? nameOrFactory : undefined;
 	const factory = isNameProvided ? (factoryOrInject as (args: I) => T) : nameOrFactory;
 	const injections = isNameProvided ? inject : (factoryOrInject as I);
 
-	// Use provided name or auto-generate
 	const cacheKey = name || AutoKeyGenerator.generate(factory as UnknownFunc);
 
 	return createUiProvider(cacheKey, factory, {}, injections);
 }
 
-/**
- * Presenter factory
- */
 export const createPresenterFactory = <I extends Record<string, unknown>>(inject: I) => {
 	function presenterFactory<T>(factory: (args: I) => T): () => T;
 	function presenterFactory<T>(name: string, factory: (args: I) => T): () => T;

@@ -17,7 +17,6 @@ export const load = async () => {
 	provider.updateAction(rand);
 	provider.updateAction(Math.random());
 
-	//second provider
 	const secondProvider = secondTestProvider();
 	await secondProvider.setUser();
 };

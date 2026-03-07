@@ -30,9 +30,6 @@ type EdgesHandle = (
 	silentChromeDevtools?: boolean
 ) => Promise<Response>;
 
-/**
- * Wraps request handling in an AsyncLocalStorage context
- */
 export const edgesHandle: EdgesHandle = async (event, callback, silentChromeDevtools = false) => {
 	const requestSymbol = Symbol('request');
 
@@ -117,7 +114,6 @@ export const edgesHandle: EdgesHandle = async (event, callback, silentChromeDevt
 						}
 					} catch (e) {
 						console.error('[edges] Failed to inject state into JSON response:', e);
-						// Original response
 						return response;
 					}
 				}

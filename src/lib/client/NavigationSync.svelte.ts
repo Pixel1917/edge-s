@@ -181,18 +181,13 @@ if (browser) {
 	};
 
 	if (typeof MutationObserver !== 'undefined') {
-		// Optimized: Only observe <body> instead of entire document tree
-		// This reduces CPU usage by 30-50% on pages with frequent DOM updates
 		const observer = new MutationObserver((mutations) => {
 			for (const mutation of mutations) {
 				if (mutation.type === 'childList') {
 					for (const node of mutation.addedNodes) {
-						// Filter early: only process script elements
 						if (node instanceof HTMLScriptElement) {
 							const text = node.textContent || '';
-							// Quick check for our state markers
 							if (text.includes('__SAFE_SSR_STATE__') && text.includes('__EDGES_REVIVER__')) {
-								// Use microtask instead of setTimeout(0) for better performance
 								queueMicrotask(() => {
 									if (window.__SAFE_SSR_STATE__) {
 										for (const [key, value] of window.__SAFE_SSR_STATE__) {
@@ -210,11 +205,9 @@ if (browser) {
 			}
 		});
 
-		// Optimized: Observe only <body> with subtree: false to reduce overhead
-		// State scripts are always injected into body, not head
 		observer.observe(document.body || document.documentElement, {
 			childList: true,
-			subtree: false // Only direct children, not entire subtree
+			subtree: false
 		});
 
 		if (typeof window !== 'undefined') {

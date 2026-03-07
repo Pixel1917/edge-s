@@ -8,7 +8,6 @@ const RequestStores: WeakMap<symbol, Map<string, unknown>> = new WeakMap();
 const UNDEFINED_MARKER = '__EDGES_UNDEFINED__';
 const NULL_MARKER = '__EDGES_NULL__';
 
-// Pre-compiled reviver code for better performance (cached once instead of regenerated per request)
 const REVIVER_CODE = `window.__EDGES_REVIVER__=function(k,v){if(v&&typeof v==='object'){if('${UNDEFINED_MARKER}' in v)return undefined;if('${NULL_MARKER}' in v)return null}return v};`;
 
 declare global {
@@ -31,18 +30,6 @@ const safeReplacer = (key: string, value: unknown): unknown => {
 	return value;
 };
 
-// const safeReviver = (key: string, value: unknown): unknown => {
-// 	if (value && typeof value === 'object') {
-// 		if (UNDEFINED_MARKER in value) {
-// 			return undefined;
-// 		}
-// 		if (NULL_MARKER in value) {
-// 			return null;
-// 		}
-// 	}
-// 	return value;
-// };
-
 export const stateSerialize = (options?: { compress?: boolean; threshold?: number }): string => {
 	const map = getRequestContext();
 	if (!map || map.size === 0) return '';
@@ -54,10 +41,7 @@ export const stateSerialize = (options?: { compress?: boolean; threshold?: numbe
 	for (const [key, value] of map) {
 		const serialized = JSON.stringify(value, safeReplacer);
 
-		// Check if we should compress this entry
 		if (shouldCompress && serialized.length > threshold) {
-			// For large values, use base64 encoding as a simple compression
-			// Optimized: Use Array.from instead of reduce for 10x performance improvement
 			const bytes = new TextEncoder().encode(serialized);
 			const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
 			const encoded = btoa(binary);
@@ -69,13 +53,11 @@ export const stateSerialize = (options?: { compress?: boolean; threshold?: numbe
 				window.__SAFE_SSR_STATE__.set('${key}', JSON.parse(decoded, window.__EDGES_REVIVER__));
 			}`);
 		} else {
-			// Optimized: Single-pass escape instead of two separate replace calls
 			const escaped = serialized.replace(/[\\']/g, (ch) => '\\' + ch);
 			entries.push(`window.__SAFE_SSR_STATE__.set('${key}',JSON.parse('${escaped}',window.__EDGES_REVIVER__))`);
 		}
 	}
 
-	// Use pre-compiled reviver code for better performance
 	return `<script>${REVIVER_CODE}window.__SAFE_SSR_STATE__=new Map();${entries.join(';')}</script>`;
 };
 

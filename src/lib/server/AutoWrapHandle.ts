@@ -19,7 +19,6 @@ interface CompressionOptions {
  */
 export function __autoWrapHandle(userHandle?: Handle, compressionOptions?: CompressionOptions, silentChromeDevtools = true): Handle {
 	if (!userHandle) {
-		// No user handle - return default edgesHandle with compression options
 		return edgesHandle(
 			({ serialize, edgesEvent, resolve }) =>
 				resolve(edgesEvent, {
@@ -29,7 +28,6 @@ export function __autoWrapHandle(userHandle?: Handle, compressionOptions?: Compr
 		);
 	}
 
-	// Wrap user's handle with edgesHandle
 	return edgesHandle(({ serialize, edgesEvent, resolve }) => {
 		return userHandle({
 			event: edgesEvent,
@@ -37,9 +35,7 @@ export function __autoWrapHandle(userHandle?: Handle, compressionOptions?: Compr
 				resolve(e, {
 					...opts,
 					transformPageChunk: ({ html, done }) => {
-						// Apply user's transform first (if any)
 						const userTransformed = opts?.transformPageChunk?.({ html, done }) ?? html;
-						// Then apply edges serialization with compression options
 						return typeof userTransformed === 'string' ? serialize(userTransformed, compressionOptions) : userTransformed;
 					}
 				})
