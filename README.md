@@ -130,7 +130,7 @@ const doubled = createDerivedState([count], ([$n]) => $n * 2);
 $doubled;
 ```
 
-> Like Svelte’s `derived`.
+> Like Svelte’s `derived`. On the server side will not subscribe to store like derived, just reads initial value, on client side works like derived.
 
 ---
 

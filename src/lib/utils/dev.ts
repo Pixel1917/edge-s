@@ -12,8 +12,8 @@ export const DevTools = {
 		if (seenFactories.has(factory)) {
 			console.warn(
 				`[edges-svelte] Factory collision detected for key "${key}". ` +
-					`This might cause unexpected behavior. Consider using createNamedStore() ` +
-					`or setting a unique __storeKey__ property on your factory function.`
+					`This might cause unexpected behavior.` +
+					`Set a unique __storeKey__ property on your factory function.`
 			);
 		}
 		seenFactories.add(factory);
@@ -52,7 +52,6 @@ export const DevTools = {
 	checkStateMutation(key: string, oldValue: unknown, newValue: unknown): void {
 		if (!dev || !browser) return;
 
-		// Check for direct object mutations
 		if (typeof oldValue === 'object' && oldValue !== null && oldValue === newValue && !Array.isArray(oldValue)) {
 			console.error(
 				`[edges-svelte] Direct mutation detected for key "${key}". ` +
