@@ -80,8 +80,8 @@ export const secondTestProvider = createStore('SecondTestProvider', ({ createSta
 
 export const secondTestPresenter = createPresenter(
 	'SecondTestPresenter',
-	({ secondTestProvider }) => {
-		const injectedProvider = secondTestProvider();
+	({ prov }) => {
+		const injectedProvider = prov();
 
 		const doInterestingThing = () => {
 			injectedProvider.setUser({
@@ -103,5 +103,5 @@ export const secondTestPresenter = createPresenter(
 			doInterestingThing
 		};
 	},
-	{ secondTestProvider }
+	{ prov: () => secondTestProvider() }
 );

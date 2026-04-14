@@ -1,8 +1,10 @@
 import type { Plugin } from 'vite';
+import * as ts from 'typescript';
 
 export interface EdgesPluginOptions {
 	silentChromeDevtools?: boolean;
 	syncFromServer?: boolean;
+	syncTransformMode?: 'ast' | 'regex' | 'hybrid';
 }
 
 /**
@@ -23,17 +25,31 @@ export interface EdgesPluginOptions {
  * ```
  */
 export function createEdgesPluginFactory(packageName: string, serverPath: string) {
-	// Compile regex patterns once per factory (performance optimization)
 	const MANUAL_IMPORT_PATTERN = new RegExp(`from\\s+['"](?:${packageName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/server|\\$lib/server)['"]`, 'g');
-	// Match "export const handle" with optional type annotation (e.g., ": Handle")
 	const HANDLE_EXPORT_PATTERN = /export\s+const\s+handle\s*(?::\s*\w+\s*)?=/;
 	const LOAD_EXPORT_PATTERN = /export\s+const\s+load\s*(?::\s*[^=]+)?=/;
 	const ACTIONS_EXPORT_PATTERN = /export\s+const\s+actions\s*(?::\s*[^=]+)?=/;
 	const SERVER_ROUTE_PATTERN = /[\\/]\+((page|layout)\.server)\.(t|j)s$/;
 	const UNIVERSAL_ROUTE_PATTERN = /[\\/]\+((page|layout))\.(t|j)s$/;
+	const SYNC_MARKER = "void '__EDGES_SYNC_WRAPPED__';";
+	const AST_SERVER_LOAD_ALIAS = '__edgesWrappedServerLoad';
+	const AST_ACTIONS_ALIAS = '__edgesWrappedActions';
+	const AST_UNIVERSAL_LOAD_ALIAS = '__edgesWrappedUniversalLoad';
+
+	type Edit = { start: number; end: number; text: string };
+
+	const applyEdits = (sourceCode: string, edits: Edit[]) => {
+		if (edits.length === 0) return sourceCode;
+		const sorted = edits.sort((a, b) => b.start - a.start);
+		let result = sourceCode;
+		for (const edit of sorted) {
+			result = result.slice(0, edit.start) + edit.text + result.slice(edit.end);
+		}
+		return result;
+	};
 
 	return function edgesPlugin(options?: EdgesPluginOptions): Plugin {
-		const { silentChromeDevtools = true, syncFromServer = true } = options || {};
+		const { silentChromeDevtools = true, syncFromServer = true, syncTransformMode = 'hybrid' } = options || {};
 
 		const findImportInsertPosition = (sourceCode: string): number => {
 			const importRegex = /(?:^|\n)((?:import|export)\s+(?:type\s+)?(?:\{[^}]*\}|\*|\w+)(?:\s+from)?\s+['"][^'"]+['"];?)/gm;
@@ -51,19 +67,83 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 			return lastMatch.index + lastMatch[0].length;
 		};
 
-		const ensureSyncImport = (sourceCode: string) => {
+		const ensureSyncImport = (sourceCode: string, importLine: string) => {
 			if (sourceCode.includes('__EDGES_SYNC_WRAPPED__')) return sourceCode;
 			const insertPos = findImportInsertPosition(sourceCode);
 			const beforeImports = sourceCode.slice(0, insertPos);
 			const afterImports = sourceCode.slice(insertPos);
-			return `${beforeImports}\n// __EDGES_SYNC_WRAPPED__\nimport { __withEdgesServerLoad, __withEdgesActions, __withEdgesUniversalLoad } from '${serverPath}';\n${afterImports}`;
+			return `${beforeImports}\n${SYNC_MARKER}\n${importLine}\n${afterImports}`;
 		};
 
-		const wrapServerRouteModule = (sourceCode: string) => {
+		const ensureAstServerImport = (sourceCode: string) =>
+			ensureSyncImport(
+				sourceCode,
+				`import { __withEdgesServerLoad as ${AST_SERVER_LOAD_ALIAS}, __withEdgesActions as ${AST_ACTIONS_ALIAS} } from '${serverPath}';`
+			);
+
+		const ensureAstUniversalImport = (sourceCode: string) =>
+			ensureSyncImport(sourceCode, `import { __withEdgesUniversalLoad as ${AST_UNIVERSAL_LOAD_ALIAS} } from '${serverPath}';`);
+
+		const ensureRegexImport = (sourceCode: string) =>
+			ensureSyncImport(sourceCode, `import { __withEdgesServerLoad, __withEdgesActions, __withEdgesUniversalLoad } from '${serverPath}';`);
+
+		const findExportedLocal = (sourceFile: ts.SourceFile, code: string, exportedName: 'load' | 'actions') => {
+			const edits: Edit[] = [];
+			let localName: string | null = null;
+			let found = false;
+
+			for (const stmt of sourceFile.statements) {
+				if (ts.isVariableStatement(stmt)) {
+					const exportModifier = stmt.modifiers?.find((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+					if (!exportModifier) continue;
+
+					for (const declaration of stmt.declarationList.declarations) {
+						if (!ts.isIdentifier(declaration.name)) continue;
+						if (declaration.name.text !== exportedName) continue;
+						localName = declaration.name.text;
+						found = true;
+						const modifierStart = exportModifier.getStart(sourceFile);
+						let modifierEnd = exportModifier.end;
+						while (modifierEnd < code.length && /\s/.test(code[modifierEnd])) modifierEnd += 1;
+						edits.push({ start: modifierStart, end: modifierEnd, text: '' });
+						break;
+					}
+				}
+
+				if (!ts.isExportDeclaration(stmt) || !stmt.exportClause || !ts.isNamedExports(stmt.exportClause) || stmt.moduleSpecifier) continue;
+
+				const named = stmt.exportClause;
+				const keepSpecs: string[] = [];
+				let statementHasTarget = false;
+
+				for (const el of named.elements) {
+					const exportName = el.name.text;
+					const sourceName = el.propertyName?.text ?? el.name.text;
+					if (exportName === exportedName) {
+						statementHasTarget = true;
+						found = true;
+						localName = sourceName;
+						continue;
+					}
+					keepSpecs.push(code.slice(el.getStart(sourceFile), el.end).trim());
+				}
+
+				if (!statementHasTarget) continue;
+				if (keepSpecs.length === 0) {
+					edits.push({ start: stmt.getStart(sourceFile), end: stmt.end, text: '' });
+				} else {
+					edits.push({ start: stmt.getStart(sourceFile), end: stmt.end, text: `export { ${keepSpecs.join(', ')} };` });
+				}
+			}
+
+			return { localName, edits, found };
+		};
+
+		const wrapServerRouteModuleRegex = (sourceCode: string) => {
 			if (!LOAD_EXPORT_PATTERN.test(sourceCode) && !ACTIONS_EXPORT_PATTERN.test(sourceCode)) {
 				return null;
 			}
-			let wrapped = ensureSyncImport(sourceCode);
+			let wrapped = ensureRegexImport(sourceCode);
 
 			if (LOAD_EXPORT_PATTERN.test(wrapped)) {
 				wrapped = wrapped
@@ -80,13 +160,60 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 			return wrapped;
 		};
 
-		const wrapUniversalRouteModule = (sourceCode: string) => {
+		const wrapUniversalRouteModuleRegex = (sourceCode: string) => {
 			if (!LOAD_EXPORT_PATTERN.test(sourceCode)) return null;
-			let wrapped = ensureSyncImport(sourceCode);
+			let wrapped = ensureRegexImport(sourceCode);
 			wrapped = wrapped
 				.replace(LOAD_EXPORT_PATTERN, (match) => match.replace('export const load', 'const __userUniversalLoad'))
 				.concat('\n\nexport const load = __withEdgesUniversalLoad(__userUniversalLoad);');
 			return wrapped;
+		};
+
+		const wrapServerRouteModuleAst = (sourceCode: string) => {
+			if (sourceCode.includes('__EDGES_SYNC_WRAPPED__')) return null;
+			let sourceFile: ts.SourceFile;
+			try {
+				sourceFile = ts.createSourceFile('route.ts', sourceCode, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+			} catch {
+				return null;
+			}
+
+			const loadInfo = findExportedLocal(sourceFile, sourceCode, 'load');
+			const actionsInfo = findExportedLocal(sourceFile, sourceCode, 'actions');
+			if (!loadInfo.found && !actionsInfo.found) return null;
+			if ((loadInfo.found && !loadInfo.localName) || (actionsInfo.found && !actionsInfo.localName)) return null;
+
+			let nextCode = applyEdits(sourceCode, [...loadInfo.edits, ...actionsInfo.edits]);
+			nextCode = ensureAstServerImport(nextCode);
+
+			const append: string[] = [];
+			if (loadInfo.localName) {
+				append.push(`const __edgesServerLoad = ${AST_SERVER_LOAD_ALIAS}(${loadInfo.localName});`);
+				append.push(`export { __edgesServerLoad as load };`);
+			}
+			if (actionsInfo.localName) {
+				append.push(`const __edgesServerActions = ${AST_ACTIONS_ALIAS}(${actionsInfo.localName});`);
+				append.push(`export { __edgesServerActions as actions };`);
+			}
+			return `${nextCode}\n\n${append.join('\n')}`;
+		};
+
+		const wrapUniversalRouteModuleAst = (sourceCode: string) => {
+			if (sourceCode.includes('__EDGES_SYNC_WRAPPED__')) return null;
+			let sourceFile: ts.SourceFile;
+			try {
+				sourceFile = ts.createSourceFile('route.ts', sourceCode, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+			} catch {
+				return null;
+			}
+
+			const loadInfo = findExportedLocal(sourceFile, sourceCode, 'load');
+			if (!loadInfo.found || !loadInfo.localName) return null;
+
+			let nextCode = applyEdits(sourceCode, [...loadInfo.edits]);
+			nextCode = ensureAstUniversalImport(nextCode);
+
+			return `${nextCode}\n\nconst __edgesUniversalLoad = ${AST_UNIVERSAL_LOAD_ALIAS}(${loadInfo.localName});\nexport { __edgesUniversalLoad as load };`;
 		};
 
 		return {
@@ -95,12 +222,22 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 
 			transform(code, id) {
 				if (syncFromServer && SERVER_ROUTE_PATTERN.test(id) && !id.includes('hooks.server')) {
-					const wrapped = wrapServerRouteModule(code);
+					const wrapped =
+						syncTransformMode === 'regex'
+							? wrapServerRouteModuleRegex(code)
+							: syncTransformMode === 'ast'
+								? wrapServerRouteModuleAst(code)
+								: (wrapServerRouteModuleAst(code) ?? wrapServerRouteModuleRegex(code));
 					if (wrapped) return { code: wrapped, map: null };
 				}
 
 				if (syncFromServer && UNIVERSAL_ROUTE_PATTERN.test(id) && !id.includes('.server.')) {
-					const wrapped = wrapUniversalRouteModule(code);
+					const wrapped =
+						syncTransformMode === 'regex'
+							? wrapUniversalRouteModuleRegex(code)
+							: syncTransformMode === 'ast'
+								? wrapUniversalRouteModuleAst(code)
+								: (wrapUniversalRouteModuleAst(code) ?? wrapUniversalRouteModuleRegex(code));
 					if (wrapped) return { code: wrapped, map: null };
 				}
 
