@@ -173,6 +173,25 @@ describe('ServerSync wrappers', () => {
 		expect((encodedArray[2] as Record<string, unknown>).__EDGES_NULL__).toBe(true);
 	});
 
+	it('encodes bigint values in raw delta object', async () => {
+		const event = makeEvent('/sync-tests/no-layout');
+
+		const response = await edgesHandle(event, async () => {
+			const wrappedLoad = __withEdgesServerLoad(async () => {
+				const state = createRawState<bigint>('sync-bigint-key', () => 1n);
+				state.value = 999999999999999999n;
+				return { ok: true };
+			});
+
+			const data = await wrappedLoad();
+			return new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } });
+		});
+
+		const payload = (await response.json()) as Record<string, unknown>;
+		const encoded = (payload.__edges_state__ as Record<string, unknown>)['sync-bigint-key'] as Record<string, unknown>;
+		expect(encoded.__EDGES_BIGINT__).toBe('999999999999999999');
+	});
+
 	it('passes edges data through wrapped universal load', async () => {
 		const wrapped = __withEdgesUniversalLoad(async (res: unknown) => {
 			return {

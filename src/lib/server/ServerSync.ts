@@ -4,6 +4,7 @@ import { build, dev } from '../utils/environment.js';
 
 const UNDEFINED_MARKER = '__EDGES_UNDEFINED__';
 const NULL_MARKER = '__EDGES_NULL__';
+const BIGINT_MARKER = '__EDGES_BIGINT__';
 
 const EDGES_STATE_FIELD = '__edges_state__';
 const EDGES_REV_FIELD = '__edges_rev__';
@@ -17,6 +18,7 @@ const PROFILE_EDGES_DELTA = dev && !build;
 const encodeEdgesValue = (value: unknown): unknown => {
 	if (value === undefined) return { [UNDEFINED_MARKER]: true };
 	if (value === null) return { [NULL_MARKER]: true };
+	if (typeof value === 'bigint') return { [BIGINT_MARKER]: value.toString() };
 	if (Array.isArray(value)) {
 		return value.map((item) => encodeEdgesValue(item));
 	}

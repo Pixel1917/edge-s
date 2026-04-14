@@ -8,8 +8,9 @@ const RequestStores: WeakMap<symbol, Map<string, unknown>> = new WeakMap();
 
 const UNDEFINED_MARKER = '__EDGES_UNDEFINED__';
 const NULL_MARKER = '__EDGES_NULL__';
+const BIGINT_MARKER = '__EDGES_BIGINT__';
 
-const REVIVER_CODE = `window.__EDGES_REVIVER__=function(k,v){if(v&&typeof v==='object'){if('${UNDEFINED_MARKER}' in v)return undefined;if('${NULL_MARKER}' in v)return null}return v};`;
+const REVIVER_CODE = `window.__EDGES_REVIVER__=function(k,v){if(v&&typeof v==='object'){if('${UNDEFINED_MARKER}' in v)return undefined;if('${NULL_MARKER}' in v)return null;if('${BIGINT_MARKER}' in v)return BigInt(v['${BIGINT_MARKER}'])}return v};`;
 
 declare global {
 	interface Window {
@@ -25,11 +26,23 @@ const safeReplacer = (key: string, value: unknown): unknown => {
 	if (value === null) {
 		return { [NULL_MARKER]: true };
 	}
+	if (typeof value === 'bigint') {
+		return { [BIGINT_MARKER]: value.toString() };
+	}
 	if (typeof value === 'function' || typeof value === 'symbol') {
 		return undefined;
 	}
 	return value;
 };
+
+const escapeInlineScriptString = (value: string) =>
+	value
+		.replace(/[\\']/g, (ch) => '\\' + ch)
+		.replace(/</g, '\\u003C')
+		.replace(/>/g, '\\u003E')
+		.replace(/&/g, '\\u0026')
+		.replace(/\u2028/g, '\\u2028')
+		.replace(/\u2029/g, '\\u2029');
 
 export const stateSerialize = (): string => {
 	const map = getRequestContext();
@@ -39,8 +52,10 @@ export const stateSerialize = (): string => {
 
 	for (const [key, value] of map) {
 		const serialized = JSON.stringify(value, safeReplacer);
-		const escaped = serialized.replace(/[\\']/g, (ch) => '\\' + ch);
-		entries.push(`window.__SAFE_SSR_STATE__.set('${key}',JSON.parse('${escaped}',window.__EDGES_REVIVER__))`);
+		if (serialized === undefined) continue;
+		const escapedKey = escapeInlineScriptString(key);
+		const escaped = escapeInlineScriptString(serialized);
+		entries.push(`window.__SAFE_SSR_STATE__.set('${escapedKey}',JSON.parse('${escaped}',window.__EDGES_REVIVER__))`);
 	}
 
 	return `<script>${REVIVER_CODE}window.__SAFE_SSR_STATE__=new Map();${entries.join(';')}</script>`;

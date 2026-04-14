@@ -2,15 +2,16 @@
 
 ### A blazing-fast, extremely lightweight and SSR-friendly store for SvelteKit.
 
-**EdgeS** brings seamless, per-request state management to Svelte apps — fully reactive, server-aware, and serialization-safe by default.
+**EdgeS** brings seamless, per-request state management to Svelte apps.
 
-No context boilerplate. No hydration headaches. Just drop-in SSR-compatible state primitives with built-in support for client-side reactivity and server-side isolation.
+No context boilerplate. No hydration headaches.
 
-- 🔄 Unified state for server and client
-- 🧠 Persistent per-request memory via `AsyncLocalStorage`
-- 💧 Tiny API
-- 💥 Instant serialization without magic
-- 🧩 Dependency injection, zero runtime overhead
+- Persistent per-request memory via `AsyncLocalStorage`
+- Tiny API
+- Instant serialization without magic
+- Dependency injection, zero runtime overhead
+
+EdgeS is built to prevent state leaks. Its primary goal is to keep server-side state safely isolated per request while providing a clean developer experience with presenters, stores, and automatic client updates when fresh state arrives from the server. It is intentionally one-way sync from server to client and does not aim to provide full two-way state synchronization between client and server.
 
 > Designed for **SvelteKit**.
 
@@ -77,8 +78,8 @@ const myStore = createStore('MyUniqueStoreName', ({ createState, createDerivedSt
 <!-- Will update the state -->
 ```
 
-- 💡 All stores created inside `createStore` use unique keys automatically and are request-scoped
-- 🛡️ Fully SSR-safe — stores are isolated per request and serialized automatically
+- All stores created inside `createStore` use unique keys automatically and are request-scoped
+- Fully SSR-safe — stores are isolated per request and serialized automatically
 
 ---
 
@@ -165,7 +166,7 @@ const useAuth = createPresenter('AuthPresenter', () => ({ isLoggedIn: true }));
 
 const useHeader = createPresenter(
 	'HeaderPresenter',
-	({ useAuth }: { useAuth: () => { isLoggedIn: boolean } }) => ({
+	({ useAuth }) => ({
 		canShowProfile: () => useAuth().isLoggedIn
 	}),
 	{ useAuth }

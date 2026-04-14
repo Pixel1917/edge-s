@@ -5,6 +5,7 @@ const stateUpdateCallbacks = new Map<string, (value: unknown) => void>();
 
 const UNDEFINED_MARKER = '__EDGES_UNDEFINED__';
 const NULL_MARKER = '__EDGES_NULL__';
+const BIGINT_MARKER = '__EDGES_BIGINT__';
 const EDGES_STATE_FIELD = '__edges_state__';
 const EDGES_REV_FIELD = '__edges_rev__';
 let lastAppliedRevision = 0;
@@ -13,6 +14,7 @@ const decodeEdgesValue = (value: unknown): unknown => {
 	if (value && typeof value === 'object') {
 		if (UNDEFINED_MARKER in value) return undefined;
 		if (NULL_MARKER in value) return null;
+		if (BIGINT_MARKER in value) return BigInt(String((value as Record<string, unknown>)[BIGINT_MARKER]));
 		if (Array.isArray(value)) {
 			return value.map((item) => decodeEdgesValue(item));
 		}
