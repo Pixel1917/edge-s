@@ -3,7 +3,7 @@
 	import { secondTestProvider, secondTestPresenter } from '../SecondTestProvider.js';
 	import { invalidateAll } from '$app/navigation';
 
-	const { user, setUserWithUndefined, setUserWithNestedUndefined } = secondTestProvider();
+	const { user, posts, setUserWithUndefined, setUserWithNestedUndefined } = secondTestProvider();
 	const { doInterestingThing } = secondTestPresenter();
 </script>
 
@@ -59,3 +59,9 @@
 <form action="?/do" method="POST" use:enhance>
 	<button type="submit">interesting thing but from server</button>
 </form>
+
+{#each $posts as post (post.id)}
+	<p>
+		{post.id} - {post.name}
+	</p>
+{/each}

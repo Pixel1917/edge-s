@@ -11,7 +11,7 @@ export interface ContextData {
 		providersAutoKeyCounters?: Map<string, number>;
 		providersConstructionStack?: string[];
 		edgesDirtyKeys?: Set<string>;
-		edgesRevision?: number;
+		edgesRevision?: string;
 	} & App.ContextDataExtended;
 }
 

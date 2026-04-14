@@ -1,10 +1,10 @@
 import { stateSerialize } from '../store/State.svelte.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
 import { RequestContext, type ContextData } from '../context/Context.js';
 import type { RequestEvent } from '@sveltejs/kit';
 
 const storage = new AsyncLocalStorage<ContextData>();
-let requestRevision = 0;
 
 type EdgesHandle = (
 	event: RequestEvent,
@@ -19,7 +19,7 @@ export const edgesHandle: EdgesHandle = async (event, callback, silentChromeDevt
 		{
 			event: event,
 			symbol: requestSymbol,
-			data: { providers: new Map(), edgesDirtyKeys: new Set(), edgesRevision: ++requestRevision }
+			data: { providers: new Map(), edgesDirtyKeys: new Set(), edgesRevision: randomUUID() }
 		},
 		async () => {
 			RequestContext.init(() => {

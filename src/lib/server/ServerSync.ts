@@ -32,12 +32,12 @@ const encodeEdgesValue = (value: unknown): unknown => {
 	return value;
 };
 
-const getEdgesDelta = (): { state: Record<string, unknown>; rev: number } | undefined => {
+const getEdgesDelta = (): { state: Record<string, unknown>; rev: string } | undefined => {
 	const startedAt = PROFILE_EDGES_DELTA ? performance.now() : 0;
 	try {
 		const context = RequestContext.current();
 		const dirtyKeys = context.data.edgesDirtyKeys;
-		const rev = context.data.edgesRevision ?? 0;
+		const rev = context.data.edgesRevision;
 		const stateMap = getStateMap();
 
 		if (!dirtyKeys || dirtyKeys.size === 0 || !stateMap || stateMap.size === 0) return undefined;
@@ -48,7 +48,7 @@ const getEdgesDelta = (): { state: Record<string, unknown>; rev: number } | unde
 			state[key] = encodeEdgesValue(stateMap.get(key));
 		}
 
-		if (Object.keys(state).length === 0) return undefined;
+		if (!rev || Object.keys(state).length === 0) return undefined;
 		return { state, rev };
 	} catch {
 		return undefined;

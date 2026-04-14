@@ -8,7 +8,8 @@ const NULL_MARKER = '__EDGES_NULL__';
 const BIGINT_MARKER = '__EDGES_BIGINT__';
 const EDGES_STATE_FIELD = '__edges_state__';
 const EDGES_REV_FIELD = '__edges_rev__';
-let lastAppliedRevision = 0;
+const SEEN_REVISIONS_LIMIT = 200;
+const seenRevisions = new Set<string>();
 
 const decodeEdgesValue = (value: unknown): unknown => {
 	if (value && typeof value === 'object') {
@@ -27,6 +28,22 @@ const decodeEdgesValue = (value: unknown): unknown => {
 	return value;
 };
 
+const tryDecodeLegacyString = (value: string): unknown => {
+	const trimmed = value.trim();
+	if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) {
+		return value;
+	}
+	if (!trimmed.includes(UNDEFINED_MARKER) && !trimmed.includes(NULL_MARKER) && !trimmed.includes(BIGINT_MARKER)) {
+		return value;
+	}
+
+	try {
+		return decodeEdgesValue(JSON.parse(trimmed));
+	} catch {
+		return value;
+	}
+};
+
 export function registerStateUpdate(key: string, callback: (value: unknown) => void) {
 	if (browser) {
 		stateUpdateCallbacks.set(key, callback);
@@ -43,14 +60,7 @@ export function processEdgesState(edgesState: Record<string, unknown>) {
 
 	batch(() => {
 		for (const [key, value] of Object.entries(edgesState)) {
-			let processedValue = decodeEdgesValue(value);
-			if (typeof value === 'string') {
-				try {
-					processedValue = decodeEdgesValue(JSON.parse(value));
-				} catch {
-					/*  do nothing  */
-				}
-			}
+			const processedValue = typeof value === 'string' ? tryDecodeLegacyString(value) : decodeEdgesValue(value);
 
 			store.set(key, processedValue);
 
@@ -68,10 +78,16 @@ export function applyEdgesFromPayload(payload: unknown) {
 	const rawState = data[EDGES_STATE_FIELD];
 	if (!rawState || typeof rawState !== 'object') return;
 
-	const revision = Number(data[EDGES_REV_FIELD] ?? 0);
-	if (Number.isFinite(revision) && revision > 0) {
-		if (revision <= lastAppliedRevision) return;
-		lastAppliedRevision = revision;
+	const revision = data[EDGES_REV_FIELD];
+	if (typeof revision === 'string' && revision.length > 0) {
+		if (seenRevisions.has(revision)) return;
+		seenRevisions.add(revision);
+		if (seenRevisions.size > SEEN_REVISIONS_LIMIT) {
+			const oldestRevision = seenRevisions.values().next().value;
+			if (oldestRevision) {
+				seenRevisions.delete(oldestRevision);
+			}
+		}
 	}
 
 	processEdgesState(rawState as Record<string, unknown>);

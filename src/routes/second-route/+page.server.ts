@@ -29,7 +29,8 @@ export const actions = {
 		provider.user.value = undefined;
 	},
 	do: async () => {
-		const { doInterestingThing } = secondTestPresenter();
+		const { doInterestingThing, addPost } = secondTestPresenter();
 		doInterestingThing();
+		addPost();
 	}
 };
