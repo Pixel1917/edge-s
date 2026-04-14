@@ -82,10 +82,13 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 			);
 
 		const ensureAstUniversalImport = (sourceCode: string) =>
-			ensureSyncImport(sourceCode, `import { __withEdgesUniversalLoad as ${AST_UNIVERSAL_LOAD_ALIAS} } from '${serverPath}';`);
+			ensureSyncImport(sourceCode, `import { __withEdgesUniversalLoad as ${AST_UNIVERSAL_LOAD_ALIAS} } from '${packageName}';`);
 
-		const ensureRegexImport = (sourceCode: string) =>
-			ensureSyncImport(sourceCode, `import { __withEdgesServerLoad, __withEdgesActions, __withEdgesUniversalLoad } from '${serverPath}';`);
+		const ensureRegexServerImport = (sourceCode: string) =>
+			ensureSyncImport(sourceCode, `import { __withEdgesServerLoad, __withEdgesActions } from '${serverPath}';`);
+
+		const ensureRegexUniversalImport = (sourceCode: string) =>
+			ensureSyncImport(sourceCode, `import { __withEdgesUniversalLoad } from '${packageName}';`);
 
 		const findExportedLocal = (sourceFile: ts.SourceFile, code: string, exportedName: 'load' | 'actions') => {
 			const edits: Edit[] = [];
@@ -143,7 +146,7 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 			if (!LOAD_EXPORT_PATTERN.test(sourceCode) && !ACTIONS_EXPORT_PATTERN.test(sourceCode)) {
 				return null;
 			}
-			let wrapped = ensureRegexImport(sourceCode);
+			let wrapped = ensureRegexServerImport(sourceCode);
 
 			if (LOAD_EXPORT_PATTERN.test(wrapped)) {
 				wrapped = wrapped
@@ -162,7 +165,7 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 
 		const wrapUniversalRouteModuleRegex = (sourceCode: string) => {
 			if (!LOAD_EXPORT_PATTERN.test(sourceCode)) return null;
-			let wrapped = ensureRegexImport(sourceCode);
+			let wrapped = ensureRegexUniversalImport(sourceCode);
 			wrapped = wrapped
 				.replace(LOAD_EXPORT_PATTERN, (match) => match.replace('export const load', 'const __userUniversalLoad'))
 				.concat('\n\nexport const load = __withEdgesUniversalLoad(__userUniversalLoad);');

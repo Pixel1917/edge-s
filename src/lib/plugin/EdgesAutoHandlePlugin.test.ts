@@ -91,7 +91,7 @@ describe('EdgesAutoHandlePlugin AST transforms', () => {
 		const out = runTransform(source, universalId, { syncTransformMode: 'ast' }) as { code: string } | null;
 		expect(out?.code).toContain(`const __edgesUniversalLoad = __edgesWrappedUniversalLoad(load);`);
 		expect(out?.code).toContain(`export { __edgesUniversalLoad as load };`);
-		expect(out?.code).toContain(`import { __withEdgesUniversalLoad as __edgesWrappedUniversalLoad }`);
+		expect(out?.code).toContain(`import { __withEdgesUniversalLoad as __edgesWrappedUniversalLoad } from 'edges-svelte';`);
 	});
 
 	it('wraps universal aliased load export', () => {
@@ -123,6 +123,12 @@ describe('EdgesAutoHandlePlugin AST transforms', () => {
 		const source = `export const load = async () => ({ ok: true });`;
 		const out = runTransform(source, serverId, { syncTransformMode: 'regex' }) as { code: string } | null;
 		expect(out?.code).toContain(`export const load = __withEdgesServerLoad(__userLoad);`);
+	});
+
+	it('uses root import for universal wrapper in regex mode', () => {
+		const source = `export const load = async () => ({ ok: true });`;
+		const out = runTransform(source, universalId, { syncTransformMode: 'regex' }) as { code: string } | null;
+		expect(out?.code).toContain(`import { __withEdgesUniversalLoad } from 'edges-svelte';`);
 	});
 
 	it('hybrid falls back to regex for unsupported external re-export', () => {
