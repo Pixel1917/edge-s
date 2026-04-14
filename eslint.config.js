@@ -32,5 +32,11 @@ export default ts.config(
 				svelteConfig
 			}
 		}
+	},
+	{
+		rules: {
+			'svelte/no-navigation-without-resolve': 0,
+			'svelte/prefer-svelte-reactivity': 0
+		}
 	}
 );

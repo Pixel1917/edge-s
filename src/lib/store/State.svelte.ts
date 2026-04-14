@@ -72,6 +72,16 @@ const getRequestContext = () => {
 	}
 };
 
+const markStateDirty = (key: string) => {
+	if (browser) return;
+	try {
+		const context = RequestContext.current();
+		(context.data.edgesDirtyKeys ??= new Set()).add(key);
+	} catch {
+		// no request context, ignore
+	}
+};
+
 export const getStateMap = (): Map<string, unknown> | undefined => {
 	try {
 		return getRequestContext();
@@ -139,11 +149,13 @@ export const createRawState = <T>(key: string, initial: () => T): { value: T } =
 		get value() {
 			if (!map.has(key)) {
 				map.set(key, initial());
+				markStateDirty(key);
 			}
 			return map.get(key) as T;
 		},
 		set value(val: T) {
 			map.set(key, val);
+			markStateDirty(key);
 		}
 	};
 };
@@ -199,6 +211,7 @@ export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 
 	if (!map.has(key)) {
 		map.set(key, initial());
+		markStateDirty(key);
 	}
 
 	return {
@@ -208,11 +221,13 @@ export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 		},
 		set(val: T) {
 			map.set(key, val);
+			markStateDirty(key);
 		},
 		update(updater) {
 			const oldVal = map.get(key) as T;
 			const newVal = updater(oldVal);
 			map.set(key, newVal);
+			markStateDirty(key);
 		}
 	};
 };

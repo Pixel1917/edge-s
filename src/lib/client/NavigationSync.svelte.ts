@@ -52,133 +52,45 @@ export function processEdgesState(edgesState: Record<string, unknown>) {
 }
 
 if (browser) {
-	const originalFetch = window.fetch;
+	const EDGES_STATE_FIELD = '__edges_state__';
+	const EDGES_REV_FIELD = '__edges_rev__';
+	let lastAppliedRevision = 0;
 
-	const parseHeaders = (headers?: Headers | HeadersInit) => {
-		const parsedHeaders: Record<string, string> = {};
-		switch (true) {
-			case headers instanceof Headers:
-				headers.forEach((value, key) => {
-					parsedHeaders[key] = value;
-				});
-				return parsedHeaders;
-			case headers && typeof headers === 'object':
-				Object.entries(headers).forEach(([key, value]) => {
-					parsedHeaders[key] = value;
-				});
-				return parsedHeaders;
-			default:
-				return parsedHeaders;
+	const applyEdgesFromPayload = (payload: unknown) => {
+		if (!payload || typeof payload !== 'object') return;
+		const data = payload as Record<string, unknown>;
+		const rawState = data[EDGES_STATE_FIELD];
+		if (!rawState || typeof rawState !== 'object') return;
+
+		const revision = Number(data[EDGES_REV_FIELD] ?? 0);
+		if (Number.isFinite(revision) && revision > 0) {
+			if (revision <= lastAppliedRevision) return;
+			lastAppliedRevision = revision;
 		}
+
+		processEdgesState(rawState as Record<string, unknown>);
 	};
 
-	window.fetch = async function (...args) {
-		const [input, init] = args;
-		let reqInfo: { url: string; headers: Record<string, string> } = { url: '', headers: {} };
-
-		if (typeof input === 'string') {
-			reqInfo = { url: input, headers: parseHeaders(init?.headers) };
-		} else if (input instanceof Request) {
-			reqInfo = { url: input.url, headers: parseHeaders(input.headers) };
-		} else if (input instanceof URL) {
-			reqInfo = { url: input.href, headers: parseHeaders(init?.headers) };
-		}
-
-		const isSvelteKitRequest =
-			(init as Record<string, unknown>).__sveltekit_fetch__ || reqInfo.headers['x-sveltekit-action'] || reqInfo.url.includes('__data.json');
-
-		const response = await originalFetch.apply(this, args);
-
-		if (!isSvelteKitRequest) {
-			return response;
-		}
-
-		if (!response.headers.get('content-type')?.includes('application/json')) {
-			return response;
-		}
-
-		const interceptEdgesStateFromResponse = (response: Response): Response => {
-			if (!response.body) return response;
-			if (init?.method === 'POST') {
-				const originalText = response.text.bind(response);
-
-				response.text = async function () {
-					const text = await originalText();
-					if (text.includes('__edges_state__')) {
-						try {
-							const parsed = JSON.parse(text);
-							if (parsed.__edges_state__) {
-								processEdgesState(parsed.__edges_state__);
-							}
-						} catch {
-							// ignore parsing errors
-						}
-					}
-					return text;
-				};
-			}
-			const originalGetReader = response.body.getReader.bind(response.body);
-
-			response.body.getReader = function <D extends ArrayBufferView<ArrayBufferLike>, T extends ReadableStreamDefaultReader<D>>(
-				opts?: ReadableStreamGetReaderOptions
-			) {
-				const reader = originalGetReader(opts) as T;
-
-				if (!('read' in reader)) return reader;
-
-				const originalRead = reader.read.bind(reader);
-				const decoder = new TextDecoder();
-
-				let buffer = '';
-				let found = false;
-				let depth = 0;
-				let capture = '';
-
-				reader.read = async function () {
-					const result = await originalRead();
-					if (result.done || found) return result;
-
-					buffer += decoder.decode(result.value, { stream: true });
-
-					const idx = buffer.indexOf('"__edges_state__"');
-					if (idx !== -1) {
-						const braceStart = buffer.indexOf('{', idx);
-						if (braceStart !== -1) {
-							for (let i = braceStart; i < buffer.length; i++) {
-								const ch = buffer[i];
-								if (ch === '{') {
-									if (depth++ === 0) capture = '';
-								}
-								if (depth > 0) capture += ch;
-								if (ch === '}') {
-									depth--;
-									if (depth === 0) {
-										try {
-											const parsed = JSON.parse(capture);
-											processEdgesState(parsed);
-											found = true;
-										} catch {
-											// waiting for next iteration
-										}
-										break;
-									}
-								}
-							}
-						}
-						const MAX_BUFFER = Math.max(8192, capture.length * 2);
-						if (buffer.length > MAX_BUFFER) buffer = buffer.slice(-MAX_BUFFER / 2);
-					}
-
-					return result;
-				};
-				return reader;
+	void import('$app/state')
+		.then(({ page }) => {
+			const apply = () => {
+				applyEdgesFromPayload(page.data);
+				applyEdgesFromPayload(page.form);
 			};
 
-			return response;
-		};
-
-		return interceptEdgesStateFromResponse(response);
-	};
+			apply();
+			const timer = window.setInterval(apply, 50);
+			window.addEventListener(
+				'beforeunload',
+				() => {
+					window.clearInterval(timer);
+				},
+				{ once: true }
+			);
+		})
+		.catch(() => {
+			// app state unavailable in this environment
+		});
 
 	if (typeof MutationObserver !== 'undefined') {
 		const observer = new MutationObserver((mutations) => {

@@ -13,6 +13,10 @@ export default defineConfig({
 			silentChromeDevtools: true
 		})
 	],
+	test: {
+		include: ['src/**/*.test.ts'],
+		exclude: ['node_modules/**', 'dist/**', '.svelte-kit/**', 'e2e/**']
+	},
 	server: {
 		port: 5178
 	}

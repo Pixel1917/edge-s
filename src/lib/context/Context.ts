@@ -9,6 +9,8 @@ export interface ContextData {
 		providers?: Map<string, unknown>;
 		providersAutoKeyCache?: WeakMap<(...args: unknown[]) => unknown, string>;
 		providersAutoKeyCounters?: Map<string, number>;
+		edgesDirtyKeys?: Set<string>;
+		edgesRevision?: number;
 	} & App.ContextDataExtended;
 }
 
