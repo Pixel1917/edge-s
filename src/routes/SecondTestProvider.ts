@@ -1,4 +1,4 @@
-import { createStore } from '$lib/provider/index.js';
+import { createStore, createPresenter } from '$lib/provider/index.js';
 
 type UserType = {
 	id: number;
@@ -27,8 +27,8 @@ export const secondTestProvider = createStore('SecondTestProvider', ({ createSta
 		});
 	};
 
-	const setUser = async () => {
-		user.value = {
+	const setUser = async (newUser?: UserType) => {
+		user.value = newUser ?? {
 			id: 1,
 			name: 'John Doe',
 			settings: {
@@ -77,3 +77,31 @@ export const secondTestProvider = createStore('SecondTestProvider', ({ createSta
 		setUserWithNestedUndefined
 	};
 });
+
+export const secondTestPresenter = createPresenter(
+	'SecondTestPresenter',
+	({ secondTestProvider }) => {
+		const injectedProvider = secondTestProvider();
+
+		const doInterestingThing = () => {
+			injectedProvider.setUser({
+				id: 3,
+				name: 'Satoru Gojou',
+				settings: {
+					theme: 'Six eyes',
+					notifications: true,
+					nested: {
+						deep: 'infinite void',
+						veryDeep: 45
+					}
+				}
+			});
+		};
+
+		return {
+			...injectedProvider,
+			doInterestingThing
+		};
+	},
+	{ secondTestProvider }
+);

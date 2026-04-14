@@ -1,4 +1,4 @@
-import { secondTestProvider } from '../SecondTestProvider.js';
+import { secondTestProvider, secondTestPresenter } from '../SecondTestProvider.js';
 
 export const load = async ({ locals }) => {
 	const provider = secondTestProvider();
@@ -27,5 +27,9 @@ export const actions = {
 	undField: async () => {
 		const provider = secondTestProvider();
 		provider.user.value = undefined;
+	},
+	do: async () => {
+		const { doInterestingThing } = secondTestPresenter();
+		doInterestingThing();
 	}
 };

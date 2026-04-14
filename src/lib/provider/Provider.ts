@@ -6,6 +6,7 @@ import {
 import { RequestContext } from '../context/index.js';
 import { browser } from '../utils/environment.js';
 import { DevTools } from '../utils/dev.js';
+import { dev } from '../utils/environment.js';
 import type { Writable } from 'svelte/store';
 
 type NoConflict<I, D> = {
@@ -15,6 +16,17 @@ type NoConflict<I, D> = {
 type UnknownFunc = { (...args: unknown[]): unknown; __storeKey__: string; displayName: string };
 
 const globalClientCache = new Map<string, unknown>();
+const globalConstructionStack: string[] = [];
+const PROVIDER_FACTORY_MARK = Symbol.for('edges-svelte.provider.factory');
+const PROVIDER_INSTANCE_MARK = Symbol.for('edges-svelte.provider.instance');
+
+type MarkedProvider = {
+	[PROVIDER_FACTORY_MARK]?: string;
+};
+
+type MarkedInstance = {
+	[PROVIDER_INSTANCE_MARK]?: string;
+};
 
 class AutoKeyGenerator {
 	private static cache = new WeakMap<UnknownFunc, string>();
@@ -98,7 +110,52 @@ const createUiProvider = <
 	dependencies: D,
 	inject?: I
 ): (() => T) => {
-	return (): T => {
+	const readConstructionStack = (): string[] => {
+		if (browser) return globalConstructionStack;
+		try {
+			const context = RequestContext.current();
+			return (context.data.providersConstructionStack ??= []);
+		} catch {
+			return globalConstructionStack;
+		}
+	};
+
+	const formatCycleError = (key: string, stack: string[]) => {
+		const cycleStart = stack.indexOf(key);
+		const chain = cycleStart === -1 ? [...stack, key] : [...stack.slice(cycleStart), key];
+		return `[edges-svelte] Circular provider dependency detected while constructing "${key}". Chain: ${chain.join(' -> ')}.`;
+	};
+
+	const validateLazyInjection = (ownerKey: string, injections?: Record<string, unknown>) => {
+		if (!dev || !injections) return;
+		for (const [depKey, depValue] of Object.entries(injections)) {
+			if (depValue && typeof depValue === 'object') {
+				const sourceKey = (depValue as MarkedInstance)[PROVIDER_INSTANCE_MARK];
+				if (sourceKey) {
+					throw new Error(
+						`[edges-svelte] Eager provider injection detected in "${ownerKey}" for dependency "${depKey}" from "${sourceKey}". Inject provider functions instead of resolved instances.`
+					);
+				}
+			}
+		}
+	};
+
+	const markProviderInstance = (instance: unknown) => {
+		if (!instance) return;
+		if (typeof instance !== 'object' && typeof instance !== 'function') return;
+		try {
+			Object.defineProperty(instance as object, PROVIDER_INSTANCE_MARK, {
+				value: cacheKey,
+				enumerable: false,
+				configurable: false,
+				writable: false
+			});
+		} catch {
+			/* do nothing */
+		}
+	};
+
+	const provider = (() => {
 		let contextMap: Map<string, unknown>;
 		if (browser) {
 			contextMap = globalClientCache;
@@ -126,12 +183,40 @@ const createUiProvider = <
 			...inject
 		} as F;
 
-		const instance = factory(deps);
+		validateLazyInjection(cacheKey, inject as Record<string, unknown> | undefined);
+
+		const constructionStack = readConstructionStack();
+		if (constructionStack.includes(cacheKey)) {
+			throw new Error(formatCycleError(cacheKey, constructionStack));
+		}
+		constructionStack.push(cacheKey);
+
+		let instance: T;
+		try {
+			instance = factory(deps);
+		} finally {
+			const idx = constructionStack.lastIndexOf(cacheKey);
+			if (idx !== -1) constructionStack.splice(idx, 1);
+		}
+		markProviderInstance(instance);
 
 		contextMap.set(cacheKey, instance);
 
 		return instance;
-	};
+	}) as (() => T) & MarkedProvider;
+
+	try {
+		Object.defineProperty(provider, PROVIDER_FACTORY_MARK, {
+			value: cacheKey,
+			enumerable: false,
+			configurable: false,
+			writable: false
+		});
+	} catch {
+		/* do nothing */
+	}
+
+	return provider;
 };
 
 type StoreDeps = {

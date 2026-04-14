@@ -158,6 +158,22 @@ const useUserStore = withDeps(({ user, createState }) => {
 });
 ```
 
+For provider-to-provider dependencies, inject provider functions lazily:
+
+```ts
+const useAuth = createPresenter('AuthPresenter', () => ({ isLoggedIn: true }));
+
+const useHeader = createPresenter(
+	'HeaderPresenter',
+	({ useAuth }: { useAuth: () => { isLoggedIn: boolean } }) => ({
+		canShowProfile: () => useAuth().isLoggedIn
+	}),
+	{ useAuth }
+);
+```
+
+Avoid injecting resolved provider instances. In development, edges throws a fail-fast error for eager provider injection and for circular dependency chains like `A -> B -> A`.
+
 ---
 
 ## createPresenter

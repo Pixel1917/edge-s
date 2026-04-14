@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { secondTestProvider } from '../SecondTestProvider.js';
+	import { secondTestProvider, secondTestPresenter } from '../SecondTestProvider.js';
 	import { invalidateAll } from '$app/navigation';
 
 	const { user, setUserWithUndefined, setUserWithNestedUndefined } = secondTestProvider();
+	const { doInterestingThing } = secondTestPresenter();
 </script>
 
 <h1>Second Page</h1>
@@ -32,6 +33,7 @@
 	<h3>Test undefined at different levels:</h3>
 	<button onclick={() => setUserWithUndefined()}>Set user to UNDEFINED (top level)</button>
 	<button onclick={() => setUserWithNestedUndefined()}>Set user with nested UNDEFINED fields</button>
+	<button onclick={() => doInterestingThing()}>Do interesting thing</button>
 </div>
 
 <a href="/">Back to main page</a>
@@ -52,4 +54,8 @@
 
 <form action="?/undField" method="POST" use:enhance>
 	<button type="submit">und</button>
+</form>
+
+<form action="?/do" method="POST" use:enhance>
+	<button type="submit">interesting thing but from server</button>
 </form>
