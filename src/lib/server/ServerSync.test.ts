@@ -58,6 +58,7 @@ describe('ServerSync wrappers', () => {
 		const payload = (await response.json()) as Record<string, unknown>;
 		expect(payload.base).toBe(true);
 		expect(payload.__edges_state__).toBeTruthy();
+		expect((payload.__edges_state__ as Record<string, unknown>)['sync-load-key']).toBe('from-load');
 		expect(payload.__edges_rev__).toBeTruthy();
 	});
 
@@ -82,7 +83,94 @@ describe('ServerSync wrappers', () => {
 		const payload = (await response.json()) as Record<string, unknown>;
 		expect(payload.ok).toBe(true);
 		expect(payload.__edges_state__).toBeTruthy();
+		expect((payload.__edges_state__ as Record<string, unknown>)['sync-action-key']).toBe(10);
 		expect(payload.__edges_rev__).toBeTruthy();
+	});
+
+	it('injects delta when wrapped load returns undefined', async () => {
+		const event = makeEvent('/sync-tests/no-layout');
+
+		const response = await edgesHandle(event, async () => {
+			const wrappedLoad = __withEdgesServerLoad(async () => {
+				const state = createRawState('sync-undefined-load-key', () => 1);
+				state.value = 2;
+				return undefined;
+			});
+
+			const data = await wrappedLoad();
+			return new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } });
+		});
+
+		const payload = (await response.json()) as Record<string, unknown>;
+		expect((payload.__edges_state__ as Record<string, unknown>)['sync-undefined-load-key']).toBe(2);
+		expect(payload.__edges_rev__).toBeTruthy();
+	});
+
+	it('does not modify non-object payloads from wrapped load', async () => {
+		const event = makeEvent('/sync-tests/no-layout');
+
+		const response = await edgesHandle(event, async () => {
+			const wrappedLoad = __withEdgesServerLoad(async () => {
+				const state = createRawState('sync-non-object-key', () => 0);
+				state.value = 1;
+				return 'plain-text-payload';
+			});
+
+			const data = await wrappedLoad();
+			return new Response(JSON.stringify({ data }), { headers: { 'content-type': 'application/json' } });
+		});
+
+		const payload = (await response.json()) as { data: unknown };
+		expect(payload.data).toBe('plain-text-payload');
+	});
+
+	it('encodes undefined values in raw delta object', async () => {
+		const event = makeEvent('/sync-tests/no-layout');
+
+		const response = await edgesHandle(event, async () => {
+			const wrappedLoad = __withEdgesServerLoad(async () => {
+				const state = createRawState<{ maybe?: string } | undefined>('sync-undefined-key', () => ({ maybe: 'x' }));
+				state.value = undefined;
+				return { ok: true };
+			});
+
+			const data = await wrappedLoad();
+			return new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } });
+		});
+
+		const payload = (await response.json()) as Record<string, unknown>;
+		const edgesState = payload.__edges_state__ as Record<string, unknown>;
+		expect((edgesState['sync-undefined-key'] as Record<string, unknown>).__EDGES_UNDEFINED__).toBe(true);
+	});
+
+	it('encodes nested undefined and null values in raw delta object', async () => {
+		const event = makeEvent('/sync-tests/no-layout');
+
+		const response = await edgesHandle(event, async () => {
+			const wrappedLoad = __withEdgesServerLoad(async () => {
+				const state = createRawState<Record<string, unknown>>('sync-nested-key', () => ({ ok: true }));
+				state.value = {
+					a: undefined,
+					b: null,
+					c: { d: undefined, e: null },
+					f: [1, undefined, null]
+				};
+				return { ok: true };
+			});
+
+			const data = await wrappedLoad();
+			return new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } });
+		});
+
+		const payload = (await response.json()) as Record<string, unknown>;
+		const encoded = (payload.__edges_state__ as Record<string, unknown>)['sync-nested-key'] as Record<string, unknown>;
+		expect((encoded.a as Record<string, unknown>).__EDGES_UNDEFINED__).toBe(true);
+		expect((encoded.b as Record<string, unknown>).__EDGES_NULL__).toBe(true);
+		expect(((encoded.c as Record<string, unknown>).d as Record<string, unknown>).__EDGES_UNDEFINED__).toBe(true);
+		expect(((encoded.c as Record<string, unknown>).e as Record<string, unknown>).__EDGES_NULL__).toBe(true);
+		const encodedArray = encoded.f as unknown[];
+		expect((encodedArray[1] as Record<string, unknown>).__EDGES_UNDEFINED__).toBe(true);
+		expect((encodedArray[2] as Record<string, unknown>).__EDGES_NULL__).toBe(true);
 	});
 
 	it('passes edges data through wrapped universal load', async () => {

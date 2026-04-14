@@ -1,5 +1,6 @@
 import { getStateMap } from '../store/State.svelte.js';
 import { RequestContext } from '../context/Context.js';
+import { build, dev } from '../utils/environment.js';
 
 const UNDEFINED_MARKER = '__EDGES_UNDEFINED__';
 const NULL_MARKER = '__EDGES_NULL__';
@@ -11,13 +12,26 @@ const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
 
-const safeReplacer = (key: string, value: unknown): unknown => {
+const PROFILE_EDGES_DELTA = dev && !build;
+
+const encodeEdgesValue = (value: unknown): unknown => {
 	if (value === undefined) return { [UNDEFINED_MARKER]: true };
 	if (value === null) return { [NULL_MARKER]: true };
+	if (Array.isArray(value)) {
+		return value.map((item) => encodeEdgesValue(item));
+	}
+	if (typeof value === 'object' && value !== null) {
+		const encoded: Record<string, unknown> = {};
+		for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+			encoded[key] = encodeEdgesValue(nested);
+		}
+		return encoded;
+	}
 	return value;
 };
 
-const getEdgesDelta = (): { state: Record<string, string>; rev: number } | undefined => {
+const getEdgesDelta = (): { state: Record<string, unknown>; rev: number } | undefined => {
+	const startedAt = PROFILE_EDGES_DELTA ? performance.now() : 0;
 	try {
 		const context = RequestContext.current();
 		const dirtyKeys = context.data.edgesDirtyKeys;
@@ -26,16 +40,23 @@ const getEdgesDelta = (): { state: Record<string, string>; rev: number } | undef
 
 		if (!dirtyKeys || dirtyKeys.size === 0 || !stateMap || stateMap.size === 0) return undefined;
 
-		const serialized: Record<string, string> = {};
+		const state: Record<string, unknown> = {};
 		for (const key of dirtyKeys) {
 			if (!stateMap.has(key)) continue;
-			serialized[key] = JSON.stringify(stateMap.get(key), safeReplacer);
+			state[key] = encodeEdgesValue(stateMap.get(key));
 		}
 
-		if (Object.keys(serialized).length === 0) return undefined;
-		return { state: serialized, rev };
+		if (Object.keys(state).length === 0) return undefined;
+		return { state, rev };
 	} catch {
 		return undefined;
+	} finally {
+		if (PROFILE_EDGES_DELTA) {
+			const duration = performance.now() - startedAt;
+			if (duration > 4) {
+				console.debug(`[edges-svelte] edges delta encode took ${duration.toFixed(2)}ms`);
+			}
+		}
 	}
 };
 

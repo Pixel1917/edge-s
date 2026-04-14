@@ -9,14 +9,18 @@ const EDGES_STATE_FIELD = '__edges_state__';
 const EDGES_REV_FIELD = '__edges_rev__';
 let lastAppliedRevision = 0;
 
-const safeReviver = (key: string, value: unknown): unknown => {
+const decodeEdgesValue = (value: unknown): unknown => {
 	if (value && typeof value === 'object') {
-		if (UNDEFINED_MARKER in value) {
-			return undefined;
+		if (UNDEFINED_MARKER in value) return undefined;
+		if (NULL_MARKER in value) return null;
+		if (Array.isArray(value)) {
+			return value.map((item) => decodeEdgesValue(item));
 		}
-		if (NULL_MARKER in value) {
-			return null;
+		const decoded: Record<string, unknown> = {};
+		for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+			decoded[key] = decodeEdgesValue(nested);
 		}
+		return decoded;
 	}
 	return value;
 };
@@ -37,12 +41,12 @@ export function processEdgesState(edgesState: Record<string, unknown>) {
 
 	batch(() => {
 		for (const [key, value] of Object.entries(edgesState)) {
-			let processedValue = value;
+			let processedValue = decodeEdgesValue(value);
 			if (typeof value === 'string') {
 				try {
-					processedValue = JSON.parse(value, safeReviver);
+					processedValue = decodeEdgesValue(JSON.parse(value));
 				} catch {
-					/* noop */
+					/*  do nothing  */
 				}
 			}
 
