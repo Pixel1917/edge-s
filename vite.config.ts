@@ -9,7 +9,6 @@ export default defineConfig({
 	plugins: [
 		sveltekit(),
 		edgesPluginDev({
-			compression: { enabled: true, threshold: 2048 },
 			silentChromeDevtools: true
 		})
 	],

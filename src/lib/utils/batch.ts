@@ -8,7 +8,7 @@ interface BatchUpdate {
 
 class BatchManager {
 	private pendingUpdates = new Map<string, BatchUpdate>();
-	private scheduled = false;
+	private depth = 0;
 	private batchCallbacks = new Set<() => void>();
 
 	batch(fn: () => void): void {
@@ -17,22 +17,38 @@ class BatchManager {
 			return;
 		}
 
-		const startBatching = !this.scheduled;
-		if (startBatching) {
-			this.scheduled = true;
-		}
+		this.depth += 1;
 
 		try {
 			fn();
 		} finally {
-			if (startBatching) {
+			this.depth -= 1;
+			if (this.depth === 0) {
 				this.flush();
 			}
 		}
 	}
 
+	begin(): void {
+		if (!browser) return;
+		this.depth += 1;
+	}
+
+	end(): void {
+		if (!browser) return;
+		if (this.depth === 0) return;
+		this.depth -= 1;
+		if (this.depth === 0) {
+			this.flush();
+		}
+	}
+
+	isBatching(): boolean {
+		return browser && this.depth > 0;
+	}
+
 	queueUpdate(key: string, value: unknown, callback?: (value: unknown) => void): void {
-		if (!browser || !this.scheduled) {
+		if (!browser || this.depth === 0) {
 			if (callback) callback(value);
 			return;
 		}
@@ -46,14 +62,12 @@ class BatchManager {
 
 	private flush(): void {
 		if (this.pendingUpdates.size === 0) {
-			this.scheduled = false;
 			return;
 		}
 
 		queueMicrotask(() => {
 			const updates = Array.from(this.pendingUpdates.values());
 			this.pendingUpdates.clear();
-			this.scheduled = false;
 
 			for (const update of updates) {
 				if (update.callback) {
@@ -77,10 +91,17 @@ export const queueUpdate = (key: string, value: unknown, callback?: (value: unkn
 
 export const onBatchComplete = (callback: () => void) => batchManager.onBatchComplete(callback);
 
+export const isBatching = () => batchManager.isBatching();
+
 export const transaction = async <T>(fn: () => Promise<T>): Promise<T> => {
-	return new Promise((resolve, reject) => {
-		batch(() => {
-			fn().then(resolve).catch(reject);
-		});
-	});
+	if (!browser) {
+		return fn();
+	}
+
+	batchManager.begin();
+	try {
+		return await fn();
+	} finally {
+		batchManager.end();
+	}
 };

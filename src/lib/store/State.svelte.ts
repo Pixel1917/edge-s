@@ -2,6 +2,7 @@ import { RequestContext } from '../context/Context.js';
 import { browser } from '../utils/environment.js';
 import { derived, type Readable, type Writable, writable } from 'svelte/store';
 import { registerStateUpdate } from '../client/NavigationSync.svelte.js';
+import { queueUpdate, isBatching } from '../utils/batch.js';
 
 const RequestStores: WeakMap<symbol, Map<string, unknown>> = new WeakMap();
 
@@ -30,32 +31,16 @@ const safeReplacer = (key: string, value: unknown): unknown => {
 	return value;
 };
 
-export const stateSerialize = (options?: { compress?: boolean; threshold?: number }): string => {
+export const stateSerialize = (): string => {
 	const map = getRequestContext();
 	if (!map || map.size === 0) return '';
 
 	const entries: string[] = [];
-	const shouldCompress = options?.compress ?? false;
-	const threshold = options?.threshold ?? 1024; // 1KB default
 
 	for (const [key, value] of map) {
 		const serialized = JSON.stringify(value, safeReplacer);
-
-		if (shouldCompress && serialized.length > threshold) {
-			const bytes = new TextEncoder().encode(serialized);
-			const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
-			const encoded = btoa(binary);
-			entries.push(`{
-				const binary = atob('${encoded}');
-				const bytes = new Uint8Array(binary.length);
-				for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-				const decoded = new TextDecoder().decode(bytes);
-				window.__SAFE_SSR_STATE__.set('${key}', JSON.parse(decoded, window.__EDGES_REVIVER__));
-			}`);
-		} else {
-			const escaped = serialized.replace(/[\\']/g, (ch) => '\\' + ch);
-			entries.push(`window.__SAFE_SSR_STATE__.set('${key}',JSON.parse('${escaped}',window.__EDGES_REVIVER__))`);
-		}
+		const escaped = serialized.replace(/[\\']/g, (ch) => '\\' + ch);
+		entries.push(`window.__SAFE_SSR_STATE__.set('${key}',JSON.parse('${escaped}',window.__EDGES_REVIVER__))`);
 	}
 
 	return `<script>${REVIVER_CODE}window.__SAFE_SSR_STATE__=new Map();${entries.join(';')}</script>`;
@@ -108,12 +93,6 @@ export const createRawState = <T>(key: string, initial: () => T): { value: T } =
 	if (browser) {
 		let state = $state(getBrowserState(key, initial()));
 
-		const callback = (newValue: unknown) => {
-			state = newValue as T;
-		};
-
-		registerStateUpdate(key, callback);
-
 		const updateWindowState = (val: T) => {
 			if (!window.__SAFE_SSR_STATE__) {
 				window.__SAFE_SSR_STATE__ = new Map();
@@ -121,13 +100,27 @@ export const createRawState = <T>(key: string, initial: () => T): { value: T } =
 			window.__SAFE_SSR_STATE__.set(key, val);
 		};
 
+		const applyValue = (val: T) => {
+			state = val;
+			updateWindowState(val);
+		};
+
+		const callback = (newValue: unknown) => {
+			queueUpdate(key, newValue, (next) => applyValue(next as T));
+		};
+
+		registerStateUpdate(key, callback);
+
 		return {
 			get value() {
 				return state;
 			},
 			set value(val: T) {
-				state = val;
-				updateWindowState(val);
+				if (isBatching()) {
+					queueUpdate(key, val, (next) => applyValue(next as T));
+					return;
+				}
+				applyValue(val);
 			}
 		};
 	}
@@ -139,9 +132,7 @@ export const createRawState = <T>(key: string, initial: () => T): { value: T } =
 			get value() {
 				return val;
 			},
-			set value(_: T) {
-				/* noop */
-			}
+			set value(_: T) {}
 		};
 	}
 
@@ -149,7 +140,6 @@ export const createRawState = <T>(key: string, initial: () => T): { value: T } =
 		get value() {
 			if (!map.has(key)) {
 				map.set(key, initial());
-				markStateDirty(key);
 			}
 			return map.get(key) as T;
 		},
@@ -164,9 +154,12 @@ export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 	if (browser) {
 		const initialValue = getBrowserState(key, initial());
 		const state = writable<T>(initialValue);
+		let currentValue = initialValue;
 
 		const callback = (newValue: unknown) => {
-			state.set(newValue as T);
+			queueUpdate(key, newValue, (next) => {
+				applyValue(next as T);
+			});
 		};
 
 		registerStateUpdate(key, callback);
@@ -174,7 +167,8 @@ export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 		const originalSet = state.set;
 		const originalUpdate = state.update;
 
-		state.set = (value: T) => {
+		const applyValue = (value: T) => {
+			currentValue = value;
 			originalSet(value);
 			if (!window.__SAFE_SSR_STATE__) {
 				window.__SAFE_SSR_STATE__ = new Map();
@@ -182,9 +176,29 @@ export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 			window.__SAFE_SSR_STATE__.set(key, value);
 		};
 
+		state.set = (value: T) => {
+			if (isBatching()) {
+				currentValue = value;
+				queueUpdate(key, value, (next) => {
+					applyValue(next as T);
+				});
+				return;
+			}
+			applyValue(value);
+		};
+
 		state.update = (updater: (value: T) => T) => {
+			if (isBatching()) {
+				const nextValue = updater(currentValue);
+				currentValue = nextValue;
+				queueUpdate(key, nextValue, (next) => {
+					applyValue(next as T);
+				});
+				return;
+			}
 			originalUpdate((current) => {
 				const newValue = updater(current);
+				currentValue = newValue;
 				if (!window.__SAFE_SSR_STATE__) {
 					window.__SAFE_SSR_STATE__ = new Map();
 				}
@@ -211,7 +225,6 @@ export const createState = <T>(key: string, initial: () => T): Writable<T> => {
 
 	if (!map.has(key)) {
 		map.set(key, initial());
-		markStateDirty(key);
 	}
 
 	return {

@@ -1,9 +1,13 @@
 import { browser } from '../utils/environment.js';
+import { batch } from '../utils/batch.js';
 
 const stateUpdateCallbacks = new Map<string, (value: unknown) => void>();
 
 const UNDEFINED_MARKER = '__EDGES_UNDEFINED__';
 const NULL_MARKER = '__EDGES_NULL__';
+const EDGES_STATE_FIELD = '__edges_state__';
+const EDGES_REV_FIELD = '__edges_rev__';
+let lastAppliedRevision = 0;
 
 const safeReviver = (key: string, value: unknown): unknown => {
 	if (value && typeof value === 'object') {
@@ -28,69 +32,75 @@ export function unregisterStateUpdate(key: string) {
 }
 
 export function processEdgesState(edgesState: Record<string, unknown>) {
-	if (!window.__SAFE_SSR_STATE__) {
-		window.__SAFE_SSR_STATE__ = new Map();
-	}
+	const store = window.__SAFE_SSR_STATE__ ?? new Map<string, unknown>();
+	window.__SAFE_SSR_STATE__ = store;
 
-	for (const [key, value] of Object.entries(edgesState)) {
-		let processedValue = value;
-		if (typeof value === 'string') {
-			try {
-				processedValue = JSON.parse(value, safeReviver);
-			} catch {
-				// If not JSON then use without handling
+	batch(() => {
+		for (const [key, value] of Object.entries(edgesState)) {
+			let processedValue = value;
+			if (typeof value === 'string') {
+				try {
+					processedValue = JSON.parse(value, safeReviver);
+				} catch {
+					/* noop */
+				}
+			}
+
+			store.set(key, processedValue);
+
+			const callback = stateUpdateCallbacks.get(key);
+			if (callback) {
+				callback(processedValue);
 			}
 		}
+	});
+}
 
-		window.__SAFE_SSR_STATE__.set(key, processedValue);
+export function applyEdgesFromPayload(payload: unknown) {
+	if (!payload || typeof payload !== 'object') return;
+	const data = payload as Record<string, unknown>;
+	const rawState = data[EDGES_STATE_FIELD];
+	if (!rawState || typeof rawState !== 'object') return;
 
-		const callback = stateUpdateCallbacks.get(key);
-		if (callback) {
-			callback(processedValue);
-		}
+	const revision = Number(data[EDGES_REV_FIELD] ?? 0);
+	if (Number.isFinite(revision) && revision > 0) {
+		if (revision <= lastAppliedRevision) return;
+		lastAppliedRevision = revision;
+	}
+
+	processEdgesState(rawState as Record<string, unknown>);
+}
+
+declare global {
+	interface Window {
+		__EDGES_NAVIGATION_SYNC_MOUNTED__?: boolean;
 	}
 }
 
 if (browser) {
-	const EDGES_STATE_FIELD = '__edges_state__';
-	const EDGES_REV_FIELD = '__edges_rev__';
-	let lastAppliedRevision = 0;
-
-	const applyEdgesFromPayload = (payload: unknown) => {
-		if (!payload || typeof payload !== 'object') return;
-		const data = payload as Record<string, unknown>;
-		const rawState = data[EDGES_STATE_FIELD];
-		if (!rawState || typeof rawState !== 'object') return;
-
-		const revision = Number(data[EDGES_REV_FIELD] ?? 0);
-		if (Number.isFinite(revision) && revision > 0) {
-			if (revision <= lastAppliedRevision) return;
-			lastAppliedRevision = revision;
-		}
-
-		processEdgesState(rawState as Record<string, unknown>);
-	};
-
-	void import('$app/state')
-		.then(({ page }) => {
-			const apply = () => {
-				applyEdgesFromPayload(page.data);
-				applyEdgesFromPayload(page.form);
-			};
-
-			apply();
-			const timer = window.setInterval(apply, 50);
-			window.addEventListener(
-				'beforeunload',
-				() => {
-					window.clearInterval(timer);
-				},
-				{ once: true }
-			);
-		})
-		.catch(() => {
-			// app state unavailable in this environment
-		});
+	if (!window.__EDGES_NAVIGATION_SYNC_MOUNTED__) {
+		window.__EDGES_NAVIGATION_SYNC_MOUNTED__ = true;
+		void Promise.all([import('svelte'), import('./NavigationStateObserver.svelte')])
+			.then(([svelte, module]) => {
+				const target = document.body || document.documentElement;
+				const host = document.createElement('div');
+				host.setAttribute('data-edges-navigation-sync', '1');
+				host.style.display = 'none';
+				target.appendChild(host);
+				svelte.mount(module.default, { target: host });
+				window.addEventListener(
+					'beforeunload',
+					() => {
+						host.remove();
+						window.__EDGES_NAVIGATION_SYNC_MOUNTED__ = false;
+					},
+					{ once: true }
+				);
+			})
+			.catch(() => {
+				window.__EDGES_NAVIGATION_SYNC_MOUNTED__ = false;
+			});
+	}
 
 	if (typeof MutationObserver !== 'undefined') {
 		const observer = new MutationObserver((mutations) => {
@@ -101,13 +111,16 @@ if (browser) {
 							const text = node.textContent || '';
 							if (text.includes('__SAFE_SSR_STATE__') && text.includes('__EDGES_REVIVER__')) {
 								queueMicrotask(() => {
-									if (window.__SAFE_SSR_STATE__) {
-										for (const [key, value] of window.__SAFE_SSR_STATE__) {
-											const callback = stateUpdateCallbacks.get(key);
-											if (callback) {
-												callback(value);
+									const store = window.__SAFE_SSR_STATE__;
+									if (store) {
+										batch(() => {
+											for (const [key, value] of store) {
+												const callback = stateUpdateCallbacks.get(key);
+												if (callback) {
+													callback(value);
+												}
 											}
-										}
+										});
 									}
 								});
 							}

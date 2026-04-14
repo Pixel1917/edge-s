@@ -21,6 +21,26 @@ const makeEvent = (pathname: string, method = 'GET', headers?: HeadersInit): Req
 };
 
 describe('ServerSync wrappers', () => {
+	it('does not inject delta when state is only read', async () => {
+		const event = makeEvent('/sync-tests/no-layout');
+
+		const response = await edgesHandle(event, async () => {
+			const wrappedLoad = __withEdgesServerLoad(async () => {
+				const state = createRawState('sync-read-only-key', () => null as string | null);
+				void state.value;
+				return { base: true };
+			});
+
+			const data = await wrappedLoad();
+			return new Response(JSON.stringify(data), { headers: { 'content-type': 'application/json' } });
+		});
+
+		const payload = (await response.json()) as Record<string, unknown>;
+		expect(payload.base).toBe(true);
+		expect(payload.__edges_state__).toBeUndefined();
+		expect(payload.__edges_rev__).toBeUndefined();
+	});
+
 	it('injects delta into wrapped server load result', async () => {
 		const event = makeEvent('/sync-tests/no-layout');
 

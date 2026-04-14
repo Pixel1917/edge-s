@@ -1,7 +1,9 @@
 import { secondTestProvider } from '../SecondTestProvider.js';
 
-export const load = async () => {
-	// const provider = secondTestProvider();
+export const load = async ({ locals }) => {
+	const provider = secondTestProvider();
+	console.log('load locals', locals);
+	console.log('load', provider.user.value);
 	// if (provider.user.value?.id !== 555) {
 	// 	provider.user.value = {
 	// 		id: 999,
@@ -11,13 +13,16 @@ export const load = async () => {
 };
 
 export const actions = {
-	change: async () => {
+	change: async ({ locals, cookies }) => {
 		const provider = secondTestProvider();
 		provider.user.value = {
 			id: 555,
 			name: 'User from action'
 		};
-		provider.addPost();
+		locals.lol = 1;
+		console.log('change', locals);
+		cookies.set('lol', '1', { path: '/' });
+		return { success: true };
 	},
 	undField: async () => {
 		const provider = secondTestProvider();

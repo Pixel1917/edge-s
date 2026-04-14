@@ -40,8 +40,7 @@ export const DevTools = {
 			if (size > 50000) {
 				largeStateWarnings.add(key);
 				console.warn(
-					`[edges-svelte] Large state detected for key "${key}" (${Math.round(size / 1024)}KB). ` +
-						`Consider splitting into smaller stores or enabling compression.`
+					`[edges-svelte] Large state detected for key "${key}" (${Math.round(size / 1024)}KB). ` + `Consider splitting into smaller stores.`
 				);
 			}
 		} catch {

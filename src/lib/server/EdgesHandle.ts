@@ -6,14 +6,9 @@ import type { RequestEvent } from '@sveltejs/kit';
 const storage = new AsyncLocalStorage<ContextData>();
 let requestRevision = 0;
 
-type SerializeOptions = {
-	compress?: boolean;
-	compressionThreshold?: number;
-};
-
 type EdgesHandle = (
 	event: RequestEvent,
-	callback: (params: { edgesEvent: RequestEvent; serialize: (html: string, options?: SerializeOptions) => string }) => Promise<Response> | Response,
+	callback: (params: { edgesEvent: RequestEvent; serialize: (html: string) => string }) => Promise<Response> | Response,
 	silentChromeDevtools?: boolean
 ) => Promise<Response>;
 
@@ -51,13 +46,9 @@ export const edgesHandle: EdgesHandle = async (event, callback, silentChromeDevt
 
 			const response = await callback({
 				edgesEvent: event,
-				serialize: (html: string, options?: SerializeOptions) => {
+				serialize: (html: string) => {
 					if (!html) return html ?? '';
-
-					const serialized = stateSerialize({
-						compress: options?.compress,
-						threshold: options?.compressionThreshold
-					});
+					const serialized = stateSerialize();
 					if (!serialized) return html;
 
 					return html.replace('</body>', `${serialized}</body>`);

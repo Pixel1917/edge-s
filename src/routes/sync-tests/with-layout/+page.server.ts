@@ -1,15 +1,14 @@
 import type { PageServerLoad } from './$types.js';
 import { syncTestProvider } from '../SyncTestProvider.js';
 
-let withLayoutPageRevision = 0;
+const nextServerNumber = () => Math.floor(Date.now() + Math.random() * 1000);
 
 export const load: PageServerLoad = async () => {
-	withLayoutPageRevision += 1;
 	const store = syncTestProvider();
-	store.pageCounter.value = withLayoutPageRevision;
+	store.pageCounter.value = nextServerNumber();
 
 	return {
 		pageDescription: 'Root page under +layout.server.ts updates its own state key.',
-		pageRevision: withLayoutPageRevision
+		pageRevision: nextServerNumber()
 	};
 };

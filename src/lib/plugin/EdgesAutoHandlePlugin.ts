@@ -1,10 +1,6 @@
 import type { Plugin } from 'vite';
 
 export interface EdgesPluginOptions {
-	compression?: {
-		enabled?: boolean;
-		threshold?: number;
-	};
 	silentChromeDevtools?: boolean;
 	syncFromServer?: boolean;
 }
@@ -37,7 +33,7 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 	const UNIVERSAL_ROUTE_PATTERN = /[\\/]\+((page|layout))\.(t|j)s$/;
 
 	return function edgesPlugin(options?: EdgesPluginOptions): Plugin {
-		const { compression = {}, silentChromeDevtools = true, syncFromServer = true } = options || {};
+		const { silentChromeDevtools = true, syncFromServer = true } = options || {};
 
 		const findImportInsertPosition = (sourceCode: string): number => {
 			const importRegex = /(?:^|\n)((?:import|export)\s+(?:type\s+)?(?:\{[^}]*\}|\*|\w+)(?:\s+from)?\s+['"][^'"]+['"];?)/gm;
@@ -118,8 +114,6 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 
 				const hasHandleExport = HANDLE_EXPORT_PATTERN.test(code);
 
-				const compressionOptions = compression.enabled ? `, { compress: true, compressionThreshold: ${compression.threshold || 1024} }` : '';
-
 				const silentOption = silentChromeDevtools ? '' : `, false`;
 
 				if (!hasHandleExport) {
@@ -135,7 +129,7 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 							afterImports +
 							`\n\n` +
 							`export const handle = edgesHandle(({ serialize, edgesEvent, resolve }) => ` +
-							`resolve(edgesEvent, { transformPageChunk: ({ html }) => serialize(html${compressionOptions}) })${silentOption});`,
+							`resolve(edgesEvent, { transformPageChunk: ({ html }) => serialize(html) })${silentOption});`,
 						map: null
 					};
 				}
@@ -150,9 +144,8 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
 					`import { __autoWrapHandle } from '${serverPath}';\n\n` +
 					afterImports.replace(/export\s+const\s+handle\s*(?::\s*\w+\s*)?=/, 'const __userHandle =') +
 					`\n\n` +
-					`const __compressionOptions = ${JSON.stringify({ compress: compression.enabled, compressionThreshold: compression.threshold })};\n` +
 					`const __silentChromeDevtools = ${silentChromeDevtools};\n` +
-					`export const handle = __autoWrapHandle(__userHandle, __compressionOptions, __silentChromeDevtools);`;
+					`export const handle = __autoWrapHandle(__userHandle, __silentChromeDevtools);`;
 
 				return {
 					code: wrappedCode,

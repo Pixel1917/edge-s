@@ -21,12 +21,6 @@ export interface BatchOptions {
 	onComplete?: () => void;
 }
 
-export interface CompressionOptions {
-	enabled?: boolean;
-	threshold?: number;
-	algorithm?: 'base64' | 'gzip' | 'brotli';
-}
-
 export interface DevToolsConfig {
 	enabled?: boolean;
 	warnLargeState?: boolean;
@@ -37,7 +31,6 @@ export interface DevToolsConfig {
 
 export interface EdgesConfig {
 	devTools?: DevToolsConfig;
-	compression?: CompressionOptions;
 	batch?: BatchOptions;
 }
 

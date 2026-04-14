@@ -279,48 +279,9 @@ You can skip specifying a unique key and pass the factory as the first argument 
 
 ---
 
-## State Compression
+## State Serialization
 
-### Method 1: Via Plugin (Recommended) ✨
-
-```typescript
-// vite.config.ts - Zero config compression!
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
-import { edgesPlugin } from 'edges-svelte/plugin';
-
-export default defineConfig({
-	plugins: [
-		sveltekit(),
-		edgesPlugin({
-			compression: {
-				enabled: true, // Enable compression
-				threshold: 2048 // Compress states > 2KB
-			},
-			silentChromeDevtools: true // Optional: silence devtools requests
-		})
-	]
-});
-
-// That's it! No need to touch hooks.server.ts
-```
-
-### Method 2: Manual Setup (For advanced use cases)
-
-```typescript
-// hooks.server.ts - If you need custom control
-import { edgesHandle } from 'edges-svelte/server';
-
-export const handle = edgesHandle(({ serialize, edgesEvent, resolve }) => {
-	return resolve(edgesEvent, {
-		transformPageChunk: ({ html }) =>
-			serialize(html, {
-				compress: true, // Enable compression
-				compressionThreshold: 2048 // Compress states > 2KB
-			})
-	});
-});
-```
+EdgeS serializes SSR state as plain script payloads. Transport-level compression should be handled by your HTTP stack (gzip/brotli) instead of application-level compression in this package.
 
 ---
 

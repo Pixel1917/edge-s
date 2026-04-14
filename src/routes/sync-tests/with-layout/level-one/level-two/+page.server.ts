@@ -1,12 +1,11 @@
 import type { Actions, PageServerLoad } from './$types.js';
 import { syncTestProvider } from '../../../SyncTestProvider.js';
 
-let levelTwoRevision = 0;
+const nextServerNumber = () => Math.floor(Date.now() + Math.random() * 1000);
 
 export const load: PageServerLoad = async () => {
-	levelTwoRevision += 1;
 	const store = syncTestProvider();
-	store.pageCounter.value = levelTwoRevision + 2000;
+	store.pageCounter.value = nextServerNumber();
 
 	return {
 		levelTwoDescription: 'Deep nested page. Form action mutates layoutCounter/pageCounter/actionCounter to verify sync + invalidation.'
@@ -16,9 +15,9 @@ export const load: PageServerLoad = async () => {
 export const actions: Actions = {
 	bump: async () => {
 		const store = syncTestProvider();
-		store.layoutCounter.value += 10;
-		store.pageCounter.value += 1;
-		store.actionCounter.value += 1;
+		store.layoutCounter.value = nextServerNumber();
+		store.pageCounter.value = nextServerNumber();
+		store.actionCounter.value = nextServerNumber();
 		store.actionPayload.value = `bump-${store.actionCounter.value}`;
 		return {
 			ok: true,
@@ -28,7 +27,7 @@ export const actions: Actions = {
 	setUndefined: async () => {
 		const store = syncTestProvider();
 		store.actionPayload.value = undefined;
-		store.actionCounter.value += 1;
+		store.actionCounter.value = nextServerNumber();
 		return {
 			ok: true,
 			action: 'setUndefined'
