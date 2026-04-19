@@ -1,6 +1,6 @@
 {
 	"name": "edges-svelte",
-	"version": "3.1.0",
+	"version": "3.1.1",
 	"license": "MIT",
 	"author": "Pixel1917",
 	"description": "A blazing-fast, extremely lightweight and SSR-friendly store for Svelte",
@@ -30,10 +30,8 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright test",
-		"precommit": "pnpm lint && pnpm check",
-		"semantic-release": "env-cmd semantic-release",
-		"commit": "pnpm format && git add . && git-cz && git push",
-		"release": "pnpm commit && pnpm semantic-release"
+		"precommit": "pnpm format",
+		"commit": "pnpm format && git add . && git-cz && git push"
 	},
 	"files": [
 		"dist",

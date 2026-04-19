@@ -1,5 +1,7 @@
 # EdgeS
 
+## Last new releases in package [@azure-net/edges](https://www.npmjs.com/package/@azure-net/edges). This package is no longer supported.
+
 ### A blazing-fast, extremely lightweight and SSR-friendly store for SvelteKit.
 
 **EdgeS** brings seamless, per-request state management to Svelte apps.
@@ -254,6 +256,43 @@ window.__EDGES_DEVTOOLS__.clearCache(); // Clear state cache
 // - Slow operations (>16ms)
 ```
 
+### Built-in Dev Component (dev-only)
+
+EdgeS provides a small in-app DevTools component for development.
+
+- A `50x50` floating button appears in the bottom-right corner.
+- Clicking it opens an inspector panel with tabs:
+  - `presenters`
+  - `stores`
+  - `info`
+- `presenters` shows an accordion of registered presenters with key/runtime metadata.
+- `stores` shows registered stores plus state tree entries, previews, and size estimates.
+- `info` includes key uniqueness checks, cache stats, and high-level resource usage.
+
+How to enable:
+
+- `edges-svelte/dev` — enables DevTools runtime API (`window.__EDGES_DEVTOOLS__`) and mounts the in-app dev UI.
+- `edges-svelte/dev-component` — exports the Svelte component itself if you want to mount it manually.
+
+```ts
+// e.g. in +layout.svelte or app bootstrap (dev only)
+import 'edges-svelte/dev';
+```
+
+```svelte
+<!-- manual mount variant -->
+<script lang="ts">
+	import DevToolsComponent from 'edges-svelte/dev-component';
+</script>
+
+<DevToolsComponent />
+```
+
+Notes:
+
+- This UI is intended only for `dev` and is not a production UI feature.
+- If you do not import `edges-svelte/dev` (or mount `edges-svelte/dev-component` manually), the UI will not appear.
+
 ---
 
 ## Monitoring & Debugging
@@ -313,12 +352,13 @@ EdgeS serializes SSR state as plain script payloads. Transport-level compression
 
 ## Exports summary
 
-| Feature                                                                                                  | Import from           |
-| -------------------------------------------------------------------------------------------------------- | --------------------- |
-| `createStore`, `createStoreFactory`, `createPresenter`, `createPresenterFactory`, `batch`, `transaction` | `edges-svelte`        |
-| `edgesPlugin`, `createEdgesPluginFactory`                                                                | `edges-svelte/plugin` |
-| `edgesHandle`                                                                                            | `edges-svelte/server` |
-| `DevTools`                                                                                               | `edges-svelte/dev`    |
+| Feature                                                                                                  | Import from                  |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `createStore`, `createStoreFactory`, `createPresenter`, `createPresenterFactory`, `batch`, `transaction` | `edges-svelte`               |
+| `edgesPlugin`, `createEdgesPluginFactory`                                                                | `edges-svelte/plugin`        |
+| `edgesHandle`                                                                                            | `edges-svelte/server`        |
+| `DevTools`                                                                                               | `edges-svelte/dev`           |
+| `DevToolsComponent`                                                                                      | `edges-svelte/dev-component` |
 
 ---
 
