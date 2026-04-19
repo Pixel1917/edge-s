@@ -11,7 +11,7 @@ declare global {
 		// interface Platform {}
 
 		/**
-		 * Extended context data for edges-svelte
+		 * Extended context data for @azure-net/edges
 		 *
 		 * Override this interface to add type-safe custom properties to your context.
 		 * These properties will be available in all stores and providers.

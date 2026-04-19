@@ -63,7 +63,7 @@ export const trackFactoryUniqueness = (factory: UnknownFunc, key: string): void 
 	if (!DEV) return;
 	if (seenFactories.has(factory)) {
 		console.warn(
-			`[edges-svelte] Factory collision detected for key "${key}". ` +
+			`[@azure-net/edges] Factory collision detected for key "${key}". ` +
 				`This might cause unexpected behavior.` +
 				`Set a unique __storeKey__ property on your factory function.`
 		);
@@ -90,7 +90,7 @@ export const validateNamedProviderUniqueness = (key: string, kind: ProviderKind,
 	});
 
 	throw new Error(
-		`[edges-svelte] Duplicate ${kind} key "${key}" detected. ` +
+		`[@azure-net/edges] Duplicate ${kind} key "${key}" detected. ` +
 			`This key is already used by a ${existing.kind}. Use unique names for createStore/createPresenter.`
 	);
 };

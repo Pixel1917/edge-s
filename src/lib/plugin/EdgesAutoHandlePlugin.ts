@@ -11,15 +11,15 @@ export interface EdgesPluginOptions {
  * Creates a factory for the edges plugin with a custom package name and server path.
  *
  * Use this when:
- * - Creating a wrapper package that re-exports edges-svelte functionality
+ * - Creating a wrapper package that re-exports @azure-net/edges functionality
  *
- * @param packageName - The name that will be used in generated imports (e.g., 'edges-svelte', 'my-wrapper')
- * @param serverPath - The import path to the server module (e.g., 'edges-svelte/server', '$lib/server')
+ * @param packageName - The name that will be used in generated imports (e.g., '@azure-net/edges', 'my-wrapper')
+ * @param serverPath - The import path to the server module (e.g., '@azure-net/edges/server', '$lib/server')
  *
  * @example
  * ```ts
  * // For wrapper packages
- * import { createEdgesPluginFactory } from 'edges-svelte/plugin';
+ * import { createEdgesPluginFactory } from '@azure-net/edges/plugin';
  *
  * export const myWrapperPlugin = createEdgesPluginFactory('my-wrapper', 'my-wrapper/server');
  * ```
@@ -305,11 +305,11 @@ export function createEdgesPluginFactory(packageName: string, serverPath: string
  * // vite.config.ts - Basic usage
  * import { sveltekit } from '@sveltejs/kit/vite';
  * import { defineConfig } from 'vite';
- * import { edgesPlugin } from 'edges-svelte/plugin';
+ * import { edgesPlugin } from '@azure-net/edges/plugin';
  *
  * export default defineConfig({
  *   plugins: [sveltekit(), edgesPlugin()]
  * });
  * ```
  */
-export const edgesPlugin = createEdgesPluginFactory('edges-svelte', 'edges-svelte/server');
+export const edgesPlugin = createEdgesPluginFactory('@azure-net/edges', '@azure-net/edges/server');

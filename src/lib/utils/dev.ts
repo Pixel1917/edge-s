@@ -210,7 +210,7 @@ export const DevTools = {
 			if (size > 50000) {
 				largeStateWarnings.add(key);
 				console.warn(
-					`[edges-svelte] Large state detected for key "${key}" (${Math.round(size / 1024)}KB). ` + `Consider splitting into smaller stores.`
+					`[@azure-net/edges] Large state detected for key "${key}" (${Math.round(size / 1024)}KB). ` + `Consider splitting into smaller stores.`
 				);
 			}
 		} catch {
@@ -223,7 +223,7 @@ export const DevTools = {
 
 		if (typeof oldValue === 'object' && oldValue !== null && oldValue === newValue && !Array.isArray(oldValue)) {
 			console.error(
-				`[edges-svelte] Direct mutation detected for key "${key}". ` +
+				`[@azure-net/edges] Direct mutation detected for key "${key}". ` +
 					`State should be immutable. Use spread operator or Object.assign() to create new objects.`
 			);
 		}
@@ -237,7 +237,7 @@ export const DevTools = {
 		const duration = performance.now() - start;
 
 		if (duration > 16) {
-			console.warn(`[edges-svelte] Slow operation "${name}" took ${duration.toFixed(2)}ms. ` + `Consider optimizing for better performance.`);
+			console.warn(`[@azure-net/edges] Slow operation "${name}" took ${duration.toFixed(2)}ms. ` + `Consider optimizing for better performance.`);
 		}
 
 		return result;
@@ -261,7 +261,7 @@ export const DevTools = {
 			current[parts[parts.length - 1]] = value;
 		}
 
-		console.groupCollapsed('[edges-svelte] State Tree');
+		console.groupCollapsed('[@azure-net/edges] State Tree');
 		console.dir(tree, { depth: null });
 		console.groupEnd();
 	},
@@ -350,7 +350,7 @@ if (BROWSER && DEV) {
 		},
 		clearCache: () => {
 			window.__SAFE_SSR_STATE__?.clear();
-			console.log('[edges-svelte] Cache cleared');
+			console.log('[@azure-net/edges] Cache cleared');
 		},
 		getStats: () => {
 			const stateMap = window.__SAFE_SSR_STATE__;
@@ -403,5 +403,5 @@ if (BROWSER && DEV) {
 			});
 	}
 
-	console.log('%c[edges-svelte] DevTools enabled. Use window.__EDGES_DEVTOOLS__ for debugging.', 'color: #00bcd4; font-weight: bold');
+	console.log('%c[@azure-net/edges] DevTools enabled. Use window.__EDGES_DEVTOOLS__ for debugging.', 'color: #00bcd4; font-weight: bold');
 }

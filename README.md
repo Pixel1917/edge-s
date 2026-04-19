@@ -1,7 +1,5 @@
 # EdgeS
 
-## Last new releases in package [@azure-net/edges](https://www.npmjs.com/package/@azure-net/edges). This package is no longer supported.
-
 ### A blazing-fast, extremely lightweight and SSR-friendly store for SvelteKit.
 
 **EdgeS** brings seamless, per-request state management to Svelte apps.
@@ -31,7 +29,7 @@ EdgeS does **not** aim to provide full server-to-client synchronization for all 
 ## Installation
 
 ```bash
-npm install edges-svelte
+npm install @azure-net/edges
 ```
 
 ---
@@ -44,7 +42,7 @@ To enable **EdgeS** install edgesPlugin, it will wrap your SvelteKit `handle` ho
 // vite.config.ts
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import { edgesPlugin } from 'edges-svelte/plugin';
+import { edgesPlugin } from '@azure-net/edges/plugin';
 
 export default defineConfig({
 	plugins: [sveltekit(), edgesPlugin()]
@@ -58,7 +56,7 @@ export default defineConfig({
 ### `createStore` - creates a store function that can manage states
 
 ```ts
-import { createStore } from 'edges-svelte';
+import { createStore } from '@azure-net/edges';
 const myStore = createStore('MyUniqueStoreName', ({ createState, createDerivedState }) => {
 	// createState creates a writable, SSR-safe store with a unique key
 	const collection = createState<number[]>([]);
@@ -209,7 +207,7 @@ While createStore provides state primitives (createState, createDerivedState, cr
 ## Batched Updates
 
 ```typescript
-import { batch, transaction } from 'edges-svelte';
+import { batch, transaction } from '@azure-net/edges';
 
 // Batch multiple state updates to avoid re-renders
 export const updateUserData = () => {
@@ -271,18 +269,18 @@ EdgeS provides a small in-app DevTools component for development.
 
 How to enable:
 
-- `edges-svelte/dev` — enables DevTools runtime API (`window.__EDGES_DEVTOOLS__`) and mounts the in-app dev UI.
-- `edges-svelte/dev-component` — exports the Svelte component itself if you want to mount it manually.
+- `@azure-net/edges/dev` — enables DevTools runtime API (`window.__EDGES_DEVTOOLS__`) and mounts the in-app dev UI.
+- `@azure-net/edges/dev-component` — exports the Svelte component itself if you want to mount it manually.
 
 ```ts
 // e.g. in +layout.svelte or app bootstrap (dev only)
-import 'edges-svelte/dev';
+import '@azure-net/edges/dev';
 ```
 
 ```svelte
 <!-- manual mount variant -->
 <script lang="ts">
-	import DevToolsComponent from 'edges-svelte/dev-component';
+	import DevToolsComponent from '@azure-net/edges/dev-component';
 </script>
 
 <DevToolsComponent />
@@ -291,7 +289,7 @@ import 'edges-svelte/dev';
 Notes:
 
 - This UI is intended only for `dev` and is not a production UI feature.
-- If you do not import `edges-svelte/dev` (or mount `edges-svelte/dev-component` manually), the UI will not appear.
+- If you do not import `@azure-net/edges/dev` (or mount `@azure-net/edges/dev-component` manually), the UI will not appear.
 
 ---
 
@@ -299,7 +297,7 @@ Notes:
 
 ```typescript
 // Enable detailed logging in development
-import { DevTools } from 'edges-svelte/dev';
+import { DevTools } from '@azure-net/edges/dev';
 
 // Monitor state changes
 const store = useUserStore();
@@ -352,23 +350,23 @@ EdgeS serializes SSR state as plain script payloads. Transport-level compression
 
 ## Exports summary
 
-| Feature                                                                                                  | Import from                  |
-| -------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| `createStore`, `createStoreFactory`, `createPresenter`, `createPresenterFactory`, `batch`, `transaction` | `edges-svelte`               |
-| `edgesPlugin`, `createEdgesPluginFactory`                                                                | `edges-svelte/plugin`        |
-| `edgesHandle`                                                                                            | `edges-svelte/server`        |
-| `DevTools`                                                                                               | `edges-svelte/dev`           |
-| `DevToolsComponent`                                                                                      | `edges-svelte/dev-component` |
+| Feature                                                                                                  | Import from                      |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| `createStore`, `createStoreFactory`, `createPresenter`, `createPresenterFactory`, `batch`, `transaction` | `@azure-net/edges`               |
+| `edgesPlugin`, `createEdgesPluginFactory`                                                                | `@azure-net/edges/plugin`        |
+| `edgesHandle`                                                                                            | `@azure-net/edges/server`        |
+| `DevTools`                                                                                               | `@azure-net/edges/dev`           |
+| `DevToolsComponent`                                                                                      | `@azure-net/edges/dev-component` |
 
 ---
 
 ## Creating Wrapper Packages
 
-If you're building a custom state management solution on top of `edges-svelte`, you can create your own plugin using the factory:
+If you're building a custom state management solution on top of `@azure-net/edges`, you can create your own plugin using the factory:
 
 ```typescript
 // my-awesome-edges/plugin/index.ts
-import { createEdgesPluginFactory } from 'edges-svelte/plugin';
+import { createEdgesPluginFactory } from '@azure-net/edges/plugin';
 
 // Create your plugin with custom package name and server path
 export const myAwesomePlugin = createEdgesPluginFactory(
@@ -393,10 +391,10 @@ export default defineConfig({
 **For package development/testing:**
 
 ```typescript
-// vite.config.ts - when developing edges-svelte itself
+// vite.config.ts - when developing @azure-net/edges itself
 import { createEdgesPluginFactory } from './src/lib/plugin/index.js';
 
-const edgesPluginDev = createEdgesPluginFactory('edges-svelte', '$lib/server');
+const edgesPluginDev = createEdgesPluginFactory('@azure-net/edges', '$lib/server');
 
 export default defineConfig({
 	plugins: [sveltekit(), edgesPluginDev()]

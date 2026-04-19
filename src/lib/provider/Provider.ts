@@ -122,7 +122,7 @@ const createUiProvider = <
 	const formatCycleError = (key: string, stack: string[]) => {
 		const cycleStart = stack.indexOf(key);
 		const chain = cycleStart === -1 ? [...stack, key] : [...stack.slice(cycleStart), key];
-		return `[edges-svelte] Circular provider dependency detected while constructing "${key}". Chain: ${chain.join(' -> ')}.`;
+		return `[@azure-net/edges] Circular provider dependency detected while constructing "${key}". Chain: ${chain.join(' -> ')}.`;
 	};
 
 	const validateLazyInjection = (ownerKey: string, injections?: Record<string, unknown>) => {
@@ -132,7 +132,7 @@ const createUiProvider = <
 				const sourceKey = (depValue as MarkedInstance)[PROVIDER_INSTANCE_MARK];
 				if (sourceKey) {
 					throw new Error(
-						`[edges-svelte] Eager provider injection detected in "${ownerKey}" for dependency "${depKey}" from "${sourceKey}". Inject provider functions instead of resolved instances.`
+						`[@azure-net/edges] Eager provider injection detected in "${ownerKey}" for dependency "${depKey}" from "${sourceKey}". Inject provider functions instead of resolved instances.`
 					);
 				}
 			}

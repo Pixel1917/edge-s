@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createEdgesPluginFactory } from './EdgesAutoHandlePlugin.js';
 
-const pluginFactory = createEdgesPluginFactory('edges-svelte', 'edges-svelte/server');
+const pluginFactory = createEdgesPluginFactory('@azure-net/edges', '@azure-net/edges/server');
 
 const runTransform = (code: string, id: string, options?: Parameters<typeof pluginFactory>[0]) => {
 	const plugin = pluginFactory(options);
@@ -91,7 +91,7 @@ describe('EdgesAutoHandlePlugin AST transforms', () => {
 		const out = runTransform(source, universalId, { syncTransformMode: 'ast' }) as { code: string } | null;
 		expect(out?.code).toContain(`const __edgesUniversalLoad = __edgesWrappedUniversalLoad(load);`);
 		expect(out?.code).toContain(`export { __edgesUniversalLoad as load };`);
-		expect(out?.code).toContain(`import { __withEdgesUniversalLoad as __edgesWrappedUniversalLoad } from 'edges-svelte';`);
+		expect(out?.code).toContain(`import { __withEdgesUniversalLoad as __edgesWrappedUniversalLoad } from '@azure-net/edges';`);
 	});
 
 	it('wraps universal aliased load export', () => {
@@ -128,7 +128,7 @@ describe('EdgesAutoHandlePlugin AST transforms', () => {
 	it('uses root import for universal wrapper in regex mode', () => {
 		const source = `export const load = async () => ({ ok: true });`;
 		const out = runTransform(source, universalId, { syncTransformMode: 'regex' }) as { code: string } | null;
-		expect(out?.code).toContain(`import { __withEdgesUniversalLoad } from 'edges-svelte';`);
+		expect(out?.code).toContain(`import { __withEdgesUniversalLoad } from '@azure-net/edges';`);
 	});
 
 	it('hybrid falls back to regex for unsupported external re-export', () => {

@@ -54,7 +54,7 @@ const getEdgesDelta = (): { state: Record<string, unknown>; rev: string } | unde
 		if (DEV) {
 			const duration = performance.now() - startedAt;
 			if (duration > 4) {
-				console.debug(`[edges-svelte] edges delta encode took ${duration.toFixed(2)}ms`);
+				console.debug(`[@azure-net/edges] edges delta encode took ${duration.toFixed(2)}ms`);
 			}
 		}
 	}
