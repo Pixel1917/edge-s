@@ -47,31 +47,44 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"svelte": "./dist/index.js"
+			"svelte": "./dist/index.js",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
 		},
 		"./server": {
 			"types": "./dist/server/index.d.ts",
-			"svelte": "./dist/server/index.js"
+			"svelte": "./dist/server/index.js",
+			"import": "./dist/server/index.js",
+			"default": "./dist/server/index.js"
 		},
 		"./context": {
 			"types": "./dist/context/index.d.ts",
-			"svelte": "./dist/context/index.js"
+			"svelte": "./dist/context/index.js",
+			"import": "./dist/context/index.js",
+			"default": "./dist/context/index.js"
 		},
 		"./state": {
 			"types": "./dist/store/index.d.ts",
-			"svelte": "./dist/store/index.js"
+			"svelte": "./dist/store/index.js",
+			"import": "./dist/store/index.js",
+			"default": "./dist/store/index.js"
 		},
 		"./plugin": {
 			"types": "./dist/plugin/index.d.ts",
+			"svelte": "./dist/plugin/index.js",
 			"import": "./dist/plugin/index.js",
 			"default": "./dist/plugin/index.js"
 		},
 		"./dev": {
 			"types": "./dist/utils/dev.d.ts",
+			"svelte": "./dist/utils/dev.js",
+			"import": "./dist/utils/dev.js",
 			"default": "./dist/utils/dev.js"
 		},
 		"./dev-component": {
 			"types": "./dist/utils/DevTools.svelte.d.ts",
+			"svelte": "./dist/utils/DevTools.svelte",
+			"import": "./dist/utils/DevTools.svelte",
 			"default": "./dist/utils/DevTools.svelte"
 		}
 	},
