@@ -1,5 +1,5 @@
 import { RequestContext } from '../context/Context.js';
-import { browser } from '../utils/environment.js';
+import { BROWSER } from '@azure-net/tools/environment';
 import { derived, type Readable, type Writable, writable } from 'svelte/store';
 import { registerStateUpdate } from '../client/NavigationSync.svelte.js';
 import { queueUpdate, isBatching } from '../utils/batch.js';
@@ -15,7 +15,7 @@ const REVIVER_CODE = `window.__EDGES_REVIVER__=function(k,v){if(v&&typeof v==='o
 declare global {
 	interface Window {
 		__SAFE_SSR_STATE__?: Map<string, unknown>;
-		__EDGES_DEVTOOLS__: Record<string, unknown>;
+		__EDGES_DEVTOOLS__?: Record<string, unknown>;
 	}
 }
 
@@ -73,7 +73,7 @@ const getRequestContext = () => {
 };
 
 const markStateDirty = (key: string) => {
-	if (browser) return;
+	if (BROWSER) return;
 	try {
 		const context = RequestContext.current();
 		(context.data.edgesDirtyKeys ??= new Set()).add(key);
@@ -105,7 +105,7 @@ const getBrowserState = <T>(key: string, initial: T): T => {
 };
 
 export const createRawState = <T>(key: string, initial: () => T): { value: T } => {
-	if (browser) {
+	if (BROWSER) {
 		let state = $state(getBrowserState(key, initial()));
 
 		const updateWindowState = (val: T) => {
@@ -166,7 +166,7 @@ export const createRawState = <T>(key: string, initial: () => T): { value: T } =
 };
 
 export const createState = <T>(key: string, initial: () => T): Writable<T> => {
-	if (browser) {
+	if (BROWSER) {
 		const initialValue = getBrowserState(key, initial());
 		const state = writable<T>(initialValue);
 		let currentValue = initialValue;
@@ -264,7 +264,7 @@ type Stores = [Readable<unknown>, ...Array<Readable<unknown>>] | Array<Readable<
 type StoresValues<T> = T extends Readable<infer U> ? U : { [K in keyof T]: T[K] extends Readable<infer U> ? U : never };
 
 export const createDerivedState = <T extends Stores, D>(stores: T, deriveFn: (values: StoresValues<T>) => D): Readable<D> => {
-	if (browser) {
+	if (BROWSER) {
 		return derived(stores, deriveFn);
 	}
 

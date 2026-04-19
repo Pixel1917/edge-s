@@ -1,4 +1,4 @@
-import { browser } from '../utils/environment.js';
+import { BROWSER } from '@azure-net/tools/environment';
 import { batch } from '../utils/batch.js';
 
 const stateUpdateCallbacks = new Map<string, (value: unknown) => void>();
@@ -45,7 +45,7 @@ const tryDecodeLegacyString = (value: string): unknown => {
 };
 
 export function registerStateUpdate(key: string, callback: (value: unknown) => void) {
-	if (browser) {
+	if (BROWSER) {
 		stateUpdateCallbacks.set(key, callback);
 	}
 }
@@ -99,7 +99,7 @@ declare global {
 	}
 }
 
-if (browser) {
+if (BROWSER) {
 	if (!window.__EDGES_NAVIGATION_SYNC_MOUNTED__) {
 		window.__EDGES_NAVIGATION_SYNC_MOUNTED__ = true;
 		void Promise.all([import('svelte'), import('./NavigationStateObserver.svelte')])

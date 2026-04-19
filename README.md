@@ -13,6 +13,15 @@ No context boilerplate. No hydration headaches.
 
 EdgeS is built to prevent state leaks. Its primary goal is to keep server-side state safely isolated per request while providing a clean developer experience with presenters, stores, and automatic client updates when fresh state arrives from the server. It is intentionally one-way sync from server to client and does not aim to provide full two-way state synchronization between client and server.
 
+### Sync Scope & Limitations
+
+EdgeS does **not** aim to provide full server-to-client synchronization for all SvelteKit flows.
+
+- The main goal of this package is **server-side state isolation per request**.
+- Server-to-client sync is a convenience layer for common cases, not a strict consistency protocol.
+- `svelte actions` with redirects are **not fully synchronized** by design.
+- Redirect-driven flows (and similar edge cases) should be handled with explicit app-level patterns (for example cookies/session/flash state) when you need guaranteed transfer of action results across navigation.
+
 > Designed for **SvelteKit**.
 
 ---

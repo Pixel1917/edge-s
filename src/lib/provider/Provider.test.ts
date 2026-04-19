@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createPresenter } from './Provider.js';
-import { dev } from '../utils/environment.js';
+import { createPresenter, createStore } from './Provider.js';
+import { DEV } from '@azure-net/tools/environment';
 
 describe('Provider diagnostics', () => {
 	it('throws on cyclic presenter dependencies', () => {
@@ -47,7 +47,7 @@ describe('Provider diagnostics', () => {
 				}
 			)();
 
-		if (dev) {
+		if (DEV) {
 			expect(createConsumer).toThrow(/Eager provider injection detected/);
 		} else {
 			expect(createConsumer).not.toThrow();
@@ -70,5 +70,31 @@ describe('Provider diagnostics', () => {
 		);
 
 		expect(useConsumer().getValue()).toBe(5);
+	});
+
+	it('throws on duplicate named store keys in dev', () => {
+		const createDuplicateStores = () => {
+			createStore('DuplicateStore', () => ({ value: 1 }));
+			createStore('DuplicateStore', () => ({ value: 2 }));
+		};
+
+		if (DEV) {
+			expect(createDuplicateStores).toThrow(/Duplicate store key "DuplicateStore"/);
+		} else {
+			expect(createDuplicateStores).not.toThrow();
+		}
+	});
+
+	it('throws on duplicate named presenter/store cross-kind keys in dev', () => {
+		const createCrossKindDuplicate = () => {
+			createPresenter('SharedKey', () => ({ value: 1 }));
+			createStore('SharedKey', () => ({ value: 2 }));
+		};
+
+		if (DEV) {
+			expect(createCrossKindDuplicate).toThrow(/Duplicate store key "SharedKey"/);
+		} else {
+			expect(createCrossKindDuplicate).not.toThrow();
+		}
 	});
 });

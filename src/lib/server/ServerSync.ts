@@ -1,6 +1,6 @@
 import { getStateMap } from '../store/State.svelte.js';
 import { RequestContext } from '../context/Context.js';
-import { build, dev } from '../utils/environment.js';
+import { DEV } from '@azure-net/tools/environment';
 
 const UNDEFINED_MARKER = '__EDGES_UNDEFINED__';
 const NULL_MARKER = '__EDGES_NULL__';
@@ -12,8 +12,6 @@ const EDGES_REV_FIELD = '__edges_rev__';
 const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 };
-
-const PROFILE_EDGES_DELTA = dev && !build;
 
 const encodeEdgesValue = (value: unknown): unknown => {
 	if (value === undefined) return { [UNDEFINED_MARKER]: true };
@@ -33,7 +31,7 @@ const encodeEdgesValue = (value: unknown): unknown => {
 };
 
 const getEdgesDelta = (): { state: Record<string, unknown>; rev: string } | undefined => {
-	const startedAt = PROFILE_EDGES_DELTA ? performance.now() : 0;
+	const startedAt = DEV ? performance.now() : 0;
 	try {
 		const context = RequestContext.current();
 		const dirtyKeys = context.data.edgesDirtyKeys;
@@ -53,7 +51,7 @@ const getEdgesDelta = (): { state: Record<string, unknown>; rev: string } | unde
 	} catch {
 		return undefined;
 	} finally {
-		if (PROFILE_EDGES_DELTA) {
+		if (DEV) {
 			const duration = performance.now() - startedAt;
 			if (duration > 4) {
 				console.debug(`[edges-svelte] edges delta encode took ${duration.toFixed(2)}ms`);

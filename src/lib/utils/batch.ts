@@ -1,4 +1,4 @@
-import { browser } from './environment.js';
+import { BROWSER } from '@azure-net/tools/environment';
 
 interface BatchUpdate {
 	key: string;
@@ -12,7 +12,7 @@ class BatchManager {
 	private batchCallbacks = new Set<() => void>();
 
 	batch(fn: () => void): void {
-		if (!browser) {
+		if (!BROWSER) {
 			fn();
 			return;
 		}
@@ -30,12 +30,12 @@ class BatchManager {
 	}
 
 	begin(): void {
-		if (!browser) return;
+		if (!BROWSER) return;
 		this.depth += 1;
 	}
 
 	end(): void {
-		if (!browser) return;
+		if (!BROWSER) return;
 		if (this.depth === 0) return;
 		this.depth -= 1;
 		if (this.depth === 0) {
@@ -44,11 +44,11 @@ class BatchManager {
 	}
 
 	isBatching(): boolean {
-		return browser && this.depth > 0;
+		return BROWSER && this.depth > 0;
 	}
 
 	queueUpdate(key: string, value: unknown, callback?: (value: unknown) => void): void {
-		if (!browser || this.depth === 0) {
+		if (!BROWSER || this.depth === 0) {
 			if (callback) callback(value);
 			return;
 		}
@@ -94,7 +94,7 @@ export const onBatchComplete = (callback: () => void) => batchManager.onBatchCom
 export const isBatching = () => batchManager.isBatching();
 
 export const transaction = async <T>(fn: () => Promise<T>): Promise<T> => {
-	if (!browser) {
+	if (!BROWSER) {
 		return fn();
 	}
 

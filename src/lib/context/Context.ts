@@ -1,4 +1,4 @@
-import { browser } from '../utils/environment.js';
+import { BROWSER } from '@azure-net/tools/environment';
 import type { RequestEvent } from '@sveltejs/kit';
 
 export interface ContextData {
@@ -23,7 +23,7 @@ class RequestContextManager {
 	}
 
 	current(): ContextData {
-		if (browser) {
+		if (BROWSER) {
 			return { data: { message: 'Do not use request context on client side' } };
 		}
 		if (!this._currentGetter) {

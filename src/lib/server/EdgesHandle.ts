@@ -48,6 +48,7 @@ export const edgesHandle: EdgesHandle = async (event, callback, silentChromeDevt
 				edgesEvent: event,
 				serialize: (html: string) => {
 					if (!html) return html ?? '';
+					if (!html.includes('</body>')) return html;
 					const serialized = stateSerialize();
 					if (!serialized) return html;
 

@@ -3,11 +3,10 @@ import {
 	createDerivedState as BaseCreateDerivedState,
 	createRawState as BaseCreateRawState
 } from '../store/index.js';
+import { BROWSER, DEV } from '@azure-net/tools/environment';
 import { RequestContext } from '../context/index.js';
-import { browser } from '../utils/environment.js';
-import { DevTools } from '../utils/dev.js';
-import { dev } from '../utils/environment.js';
 import type { Writable } from 'svelte/store';
+import { recordProviderAccess, registerProviderDefinition, trackFactoryUniqueness, validateNamedProviderUniqueness } from './Utils.js';
 
 type NoConflict<I, D> = {
 	[K in keyof I]: K extends keyof D ? never : I[K];
@@ -41,7 +40,7 @@ class AutoKeyGenerator {
 			counters = this.counters;
 		};
 
-		if (browser) {
+		if (BROWSER) {
 			setGlobalCacheSystem();
 		} else {
 			try {
@@ -70,7 +69,7 @@ class AutoKeyGenerator {
 		}
 		cache!.set(factory, finalKey);
 
-		DevTools.validateFactoryUniqueness(factory, finalKey);
+		trackFactoryUniqueness(factory, finalKey);
 
 		return finalKey;
 	}
@@ -86,7 +85,7 @@ class AutoKeyGenerator {
 }
 
 export const clearCache = (pattern?: string) => {
-	if (browser) {
+	if (BROWSER) {
 		if (pattern) {
 			for (const [key] of globalClientCache) {
 				if (key.includes(pattern)) {
@@ -111,7 +110,7 @@ const createUiProvider = <
 	inject?: I
 ): (() => T) => {
 	const readConstructionStack = (): string[] => {
-		if (browser) return globalConstructionStack;
+		if (BROWSER) return globalConstructionStack;
 		try {
 			const context = RequestContext.current();
 			return (context.data.providersConstructionStack ??= []);
@@ -127,7 +126,7 @@ const createUiProvider = <
 	};
 
 	const validateLazyInjection = (ownerKey: string, injections?: Record<string, unknown>) => {
-		if (!dev || !injections) return;
+		if (!DEV || !injections) return;
 		for (const [depKey, depValue] of Object.entries(injections)) {
 			if (depValue && typeof depValue === 'object') {
 				const sourceKey = (depValue as MarkedInstance)[PROVIDER_INSTANCE_MARK];
@@ -157,7 +156,7 @@ const createUiProvider = <
 
 	const provider = (() => {
 		let contextMap: Map<string, unknown>;
-		if (browser) {
+		if (BROWSER) {
 			contextMap = globalClientCache;
 		} else {
 			try {
@@ -174,6 +173,7 @@ const createUiProvider = <
 		if (contextMap.has(cacheKey)) {
 			const cached = contextMap.get(cacheKey);
 			if (cached !== undefined) {
+				recordProviderAccess(cacheKey, cached, BROWSER ? contextMap.size : undefined);
 				return cached as T;
 			}
 		}
@@ -201,6 +201,7 @@ const createUiProvider = <
 		markProviderInstance(instance);
 
 		contextMap.set(cacheKey, instance);
+		recordProviderAccess(cacheKey, instance, BROWSER ? contextMap.size : undefined);
 
 		return instance;
 	}) as (() => T) & MarkedProvider;
@@ -244,7 +245,12 @@ export function createStore<T, I extends Record<string, unknown> = Record<string
 	const factory = isNameProvided ? (factoryOrInject as (args: StoreDeps & NoConflict<I, StoreDeps>) => T) : nameOrFactory;
 	const injections = isNameProvided ? inject : (factoryOrInject as I);
 
+	if (isNameProvided) {
+		validateNamedProviderUniqueness(name!, 'store', factory as UnknownFunc);
+	}
+
 	const cacheKey = name || AutoKeyGenerator.generate(factory as UnknownFunc);
+	registerProviderDefinition(cacheKey, 'store', factory as UnknownFunc, Boolean(name));
 
 	return createUiProvider(
 		cacheKey,
@@ -303,7 +309,12 @@ export function createPresenter<T, I extends Record<string, unknown> = Record<st
 	const factory = isNameProvided ? (factoryOrInject as (args: I) => T) : nameOrFactory;
 	const injections = isNameProvided ? inject : (factoryOrInject as I);
 
+	if (isNameProvided) {
+		validateNamedProviderUniqueness(name!, 'presenter', factory as UnknownFunc);
+	}
+
 	const cacheKey = name || AutoKeyGenerator.generate(factory as UnknownFunc);
+	registerProviderDefinition(cacheKey, 'presenter', factory as UnknownFunc, Boolean(name));
 
 	return createUiProvider(cacheKey, factory, {}, injections);
 }

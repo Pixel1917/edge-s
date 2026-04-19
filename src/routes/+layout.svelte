@@ -1,5 +1,6 @@
 <script lang="ts">
 	let { children } = $props();
+	import DevTools from '$lib/utils/DevTools.svelte';
 </script>
 
 <header style="padding: 12px; border-bottom: 1px solid #ddd; margin-bottom: 16px;">
@@ -14,3 +15,4 @@
 </header>
 
 {@render children?.()}
+<DevTools />

@@ -2,9 +2,11 @@
 	import { enhance } from '$app/forms';
 	import { secondTestProvider, secondTestPresenter } from '../SecondTestProvider.js';
 	import { invalidateAll } from '$app/navigation';
+	// import { secondTestPresenterWithDuplicateName } from './Presenter.js';
 
 	const { user, posts, setUserWithUndefined, setUserWithNestedUndefined } = secondTestProvider();
 	const { doInterestingThing } = secondTestPresenter();
+	// const pr = secondTestPresenterWithDuplicateName();
 </script>
 
 <h1>Second Page</h1>
@@ -47,7 +49,7 @@
 </p>
 
 <button onclick={() => invalidateAll()}>invalidate</button>
-
+<!-- <button onclick={() => pr.doInterestingThing()}>log</button> -->
 <form action="?/change" method="POST" use:enhance>
 	<button type="submit">submit</button>
 </form>
