@@ -41,6 +41,7 @@ const providerRuntime = new Map<string, ProviderDevRuntimeSnapshot>();
 
 let providerCacheEntries = 0;
 let providerCacheSizeBytes = 0;
+const HMR_ACTIVE = DEV && BROWSER && typeof import.meta !== 'undefined' && !!import.meta.hot;
 
 const safeJsonLength = (value: unknown): number => {
 	try {
@@ -79,6 +80,11 @@ export const validateNamedProviderUniqueness = (key: string, kind: ProviderKind,
 		return;
 	}
 	if (existing.factory === factory && existing.kind === kind) {
+		return;
+	}
+
+	if (HMR_ACTIVE && existing.kind === kind) {
+		namedProviderRegistry.set(key, { kind, factory });
 		return;
 	}
 
