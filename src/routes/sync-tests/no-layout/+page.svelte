@@ -8,7 +8,7 @@
 </script>
 
 <h1>No Layout Case</h1>
-<p data-testid="case-description">{data.caseDescription}</p>
+<p data-testid="case-description">test: {data.caseDescription}</p>
 <p data-testid="no-layout-scenario">Scenario: {store.scenario.value}</p>
 <p data-testid="no-layout-page-counter">Page counter: {store.pageCounter.value}</p>
 <p data-testid="no-layout-layout-counter">Layout counter: {store.layoutCounter.value}</p>

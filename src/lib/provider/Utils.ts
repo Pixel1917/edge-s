@@ -42,6 +42,7 @@ const providerRuntime = new Map<string, ProviderDevRuntimeSnapshot>();
 let providerCacheEntries = 0;
 let providerCacheSizeBytes = 0;
 const HMR_ACTIVE = DEV && BROWSER && typeof import.meta !== 'undefined' && !!import.meta.hot;
+const RELAX_DUPLICATE_SAME_KIND_IN_BROWSER_DEV = DEV && BROWSER;
 
 const safeJsonLength = (value: unknown): number => {
 	try {
@@ -83,7 +84,7 @@ export const validateNamedProviderUniqueness = (key: string, kind: ProviderKind,
 		return;
 	}
 
-	if (HMR_ACTIVE && existing.kind === kind) {
+	if ((HMR_ACTIVE || RELAX_DUPLICATE_SAME_KIND_IN_BROWSER_DEV) && existing.kind === kind) {
 		namedProviderRegistry.set(key, { kind, factory });
 		return;
 	}
@@ -94,11 +95,17 @@ export const validateNamedProviderUniqueness = (key: string, kind: ProviderKind,
 		existingKind: existing.kind,
 		at: Date.now()
 	});
-
-	throw new Error(
-		`[@azure-net/edges] Duplicate ${kind} key "${key}" detected. ` +
-			`This key is already used by a ${existing.kind}. Use unique names for createStore/createPresenter.`
-	);
+	if (!BROWSER) {
+		throw new Error(
+			`[@azure-net/edges] Duplicate ${kind} key "${key}" detected. ` +
+				`This key is already used by a ${existing.kind}. Use unique names for createStore/createPresenter.`
+		);
+	} else {
+		console.error(
+			`[@azure-net/edges] Duplicate ${kind} key "${key}" detected. ` +
+				`This key is already used by a ${existing.kind}. Use unique names for createStore/createPresenter.`
+		);
+	}
 };
 
 export const registerProviderDefinition = (key: string, kind: ProviderKind, factory: UnknownFunc, named: boolean): void => {
