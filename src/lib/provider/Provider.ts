@@ -3,10 +3,10 @@ import {
 	createDerivedState as BaseCreateDerivedState,
 	createRawState as BaseCreateRawState
 } from '../store/index.js';
-import { BROWSER, DEV } from '@azure-net/tools/environment';
+import { BROWSER } from '@azure-net/tools/environment';
 import { RequestContext } from '../context/index.js';
 import type { Writable } from 'svelte/store';
-import { recordProviderAccess, registerProviderDefinition, trackFactoryUniqueness, validateNamedProviderUniqueness } from './Utils.js';
+import { recordProviderAccess, registerProviderDefinition } from './Utils.js';
 
 type NoConflict<I, D> = {
 	[K in keyof I]: K extends keyof D ? never : I[K];
@@ -69,8 +69,6 @@ class AutoKeyGenerator {
 		}
 		cache!.set(factory, finalKey);
 
-		trackFactoryUniqueness(factory, finalKey);
-
 		return finalKey;
 	}
 
@@ -119,26 +117,6 @@ const createUiProvider = <
 		}
 	};
 
-	const formatCycleError = (key: string, stack: string[]) => {
-		const cycleStart = stack.indexOf(key);
-		const chain = cycleStart === -1 ? [...stack, key] : [...stack.slice(cycleStart), key];
-		return `[@azure-net/edges] Circular provider dependency detected while constructing "${key}". Chain: ${chain.join(' -> ')}.`;
-	};
-
-	const validateLazyInjection = (ownerKey: string, injections?: Record<string, unknown>) => {
-		if (!DEV || !injections) return;
-		for (const [depKey, depValue] of Object.entries(injections)) {
-			if (depValue && typeof depValue === 'object') {
-				const sourceKey = (depValue as MarkedInstance)[PROVIDER_INSTANCE_MARK];
-				if (sourceKey) {
-					throw new Error(
-						`[@azure-net/edges] Eager provider injection detected in "${ownerKey}" for dependency "${depKey}" from "${sourceKey}". Inject provider functions instead of resolved instances.`
-					);
-				}
-			}
-		}
-	};
-
 	const markProviderInstance = (instance: unknown) => {
 		if (!instance) return;
 		if (typeof instance !== 'object' && typeof instance !== 'function') return;
@@ -183,11 +161,9 @@ const createUiProvider = <
 			...inject
 		} as F;
 
-		validateLazyInjection(cacheKey, inject as Record<string, unknown> | undefined);
-
 		const constructionStack = readConstructionStack();
 		if (constructionStack.includes(cacheKey)) {
-			throw new Error(formatCycleError(cacheKey, constructionStack));
+			return contextMap.get(cacheKey) as T;
 		}
 		constructionStack.push(cacheKey);
 
@@ -244,10 +220,6 @@ export function createStore<T, I extends Record<string, unknown> = Record<string
 	const name = isNameProvided ? nameOrFactory : undefined;
 	const factory = isNameProvided ? (factoryOrInject as (args: StoreDeps & NoConflict<I, StoreDeps>) => T) : nameOrFactory;
 	const injections = isNameProvided ? inject : (factoryOrInject as I);
-
-	if (isNameProvided) {
-		validateNamedProviderUniqueness(name!, 'store', factory as UnknownFunc);
-	}
 
 	const cacheKey = name || AutoKeyGenerator.generate(factory as UnknownFunc);
 	registerProviderDefinition(cacheKey, 'store', factory as UnknownFunc, Boolean(name));
@@ -308,10 +280,6 @@ export function createPresenter<T, I extends Record<string, unknown> = Record<st
 	const name = isNameProvided ? nameOrFactory : undefined;
 	const factory = isNameProvided ? (factoryOrInject as (args: I) => T) : nameOrFactory;
 	const injections = isNameProvided ? inject : (factoryOrInject as I);
-
-	if (isNameProvided) {
-		validateNamedProviderUniqueness(name!, 'presenter', factory as UnknownFunc);
-	}
 
 	const cacheKey = name || AutoKeyGenerator.generate(factory as UnknownFunc);
 	registerProviderDefinition(cacheKey, 'presenter', factory as UnknownFunc, Boolean(name));

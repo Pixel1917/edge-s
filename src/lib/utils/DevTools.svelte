@@ -144,7 +144,6 @@
 				{#if activeTab === 'info'}
 					<div class="info-actions">
 						<button on:click={refresh}>Refresh snapshot</button>
-						<button on:click={runKeyCheck}>Check key uniqueness</button>
 						<button on:click={clearStateCache}>Clear state cache</button>
 					</div>
 					<div class="metrics">

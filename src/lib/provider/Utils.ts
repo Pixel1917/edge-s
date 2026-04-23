@@ -33,16 +33,11 @@ export interface ProviderDuplicateAttempt {
 	at: number;
 }
 
-const seenFactories = new WeakSet<UnknownFunc>();
-const namedProviderRegistry = new Map<string, { kind: ProviderKind; factory: UnknownFunc }>();
-const duplicateNamedProviderEvents: ProviderDuplicateAttempt[] = [];
 const providerDefinitions = new Map<string, ProviderDevDefinitionSnapshot>();
 const providerRuntime = new Map<string, ProviderDevRuntimeSnapshot>();
 
 let providerCacheEntries = 0;
 let providerCacheSizeBytes = 0;
-const HMR_ACTIVE = DEV && BROWSER && typeof import.meta !== 'undefined' && !!import.meta.hot;
-const RELAX_DUPLICATE_SAME_KIND_IN_BROWSER_DEV = DEV && BROWSER;
 
 const safeJsonLength = (value: unknown): number => {
 	try {
@@ -62,50 +57,14 @@ const estimateSize = (value: unknown): number => {
 };
 
 export const trackFactoryUniqueness = (factory: UnknownFunc, key: string): void => {
-	if (!DEV) return;
-	if (seenFactories.has(factory)) {
-		console.warn(
-			`[@azure-net/edges] Factory collision detected for key "${key}". ` +
-				`This might cause unexpected behavior.` +
-				`Set a unique __storeKey__ property on your factory function.`
-		);
-	}
-	seenFactories.add(factory);
+	factory;
+	key;
 };
 
 export const validateNamedProviderUniqueness = (key: string, kind: ProviderKind, factory: UnknownFunc): void => {
-	if (!DEV) return;
-	const existing = namedProviderRegistry.get(key);
-	if (!existing) {
-		namedProviderRegistry.set(key, { kind, factory });
-		return;
-	}
-	if (existing.factory === factory && existing.kind === kind) {
-		return;
-	}
-
-	if ((HMR_ACTIVE || RELAX_DUPLICATE_SAME_KIND_IN_BROWSER_DEV) && existing.kind === kind) {
-		namedProviderRegistry.set(key, { kind, factory });
-		return;
-	}
-
-	duplicateNamedProviderEvents.push({
-		key,
-		attemptedKind: kind,
-		existingKind: existing.kind,
-		at: Date.now()
-	});
-	if (!BROWSER) {
-		throw new Error(
-			`[@azure-net/edges] Duplicate ${kind} key "${key}" detected. ` +
-				`This key is already used by a ${existing.kind}. Use unique names for createStore/createPresenter.`
-		);
-	} else {
-		console.error(
-			`[@azure-net/edges] Duplicate ${kind} key "${key}" detected. ` +
-				`This key is already used by a ${existing.kind}. Use unique names for createStore/createPresenter.`
-		);
-	}
+	key;
+	kind;
+	factory;
 };
 
 export const registerProviderDefinition = (key: string, kind: ProviderKind, factory: UnknownFunc, named: boolean): void => {
@@ -154,4 +113,4 @@ export const getProviderDevSnapshot = (): ProviderDevSnapshot => ({
 	providerCacheSizeBytes
 });
 
-export const getProviderDuplicateAttempts = (): ProviderDuplicateAttempt[] => [...duplicateNamedProviderEvents];
+export const getProviderDuplicateAttempts = (): ProviderDuplicateAttempt[] => [];
