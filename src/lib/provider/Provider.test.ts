@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { createPresenter, createStore } from './Provider.js';
+import { createPresenter, createPresenterFactory, createStore } from './Provider.js';
 
 describe('Provider diagnostics', () => {
-	it('does not throw on cyclic presenter dependencies', () => {
+	it('throws a readable error on cyclic presenter dependencies', () => {
 		let useA: () => { label: string } = () => ({ label: '' });
 
 		const useB = createPresenter(
@@ -27,8 +27,7 @@ describe('Provider diagnostics', () => {
 			}
 		);
 
-		expect(() => useA()).not.toThrow();
-		expect(useA().label).toBe('a');
+		expect(() => useA()).toThrow('Circular provider dependency detected: CycleA -> CycleB -> CycleA');
 	});
 
 	it('allows eager provider instance injection without diagnostics throw', () => {
@@ -65,6 +64,28 @@ describe('Provider diagnostics', () => {
 		);
 
 		expect(useConsumer().getValue()).toBe(5);
+	});
+
+	it('allows presenter factory consumers to receive local dependencies', () => {
+		const createAppPresenter = createPresenterFactory({
+			prefix: 'app'
+		});
+
+		const useChildPresenter = createPresenter('FactoryChildPresenter', () => ({
+			label: 'child'
+		}));
+
+		const usePresenter = createAppPresenter(
+			'FactoryPresenterWithLocalDeps',
+			({ prefix, child }: { prefix: string; child: () => { label: string } }) => ({
+				label: `${prefix}:${child().label}`
+			}),
+			{
+				child: useChildPresenter
+			}
+		);
+
+		expect(usePresenter().label).toBe('app:child');
 	});
 
 	it('does not throw on duplicate named store keys', () => {

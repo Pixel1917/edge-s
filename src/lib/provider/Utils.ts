@@ -56,17 +56,6 @@ const estimateSize = (value: unknown): number => {
 	return safeJsonLength(value);
 };
 
-export const trackFactoryUniqueness = (factory: UnknownFunc, key: string): void => {
-	factory;
-	key;
-};
-
-export const validateNamedProviderUniqueness = (key: string, kind: ProviderKind, factory: UnknownFunc): void => {
-	key;
-	kind;
-	factory;
-};
-
 export const registerProviderDefinition = (key: string, kind: ProviderKind, factory: UnknownFunc, named: boolean): void => {
 	if (!DEV || !BROWSER) return;
 	if (providerDefinitions.has(key)) return;

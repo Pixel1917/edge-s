@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import type { DevToolsInspectorSnapshot, DevToolsKeyCheckResult, EdgesDevtoolsWindowApi } from './dev.js';
+	import type { DevToolsInspectorSnapshot, EdgesDevtoolsWindowApi } from './dev.js';
 
 	type Tab = 'presenters' | 'stores' | 'info';
 
@@ -22,7 +22,6 @@
 	let isOpen = false;
 	let activeTab: Tab = 'presenters';
 	let inspector: DevToolsInspectorSnapshot = emptySnapshot();
-	let keyCheckResult: DevToolsKeyCheckResult | null = null;
 	let presenterExpanded = new Set<string>();
 	let storeExpanded = new Set<string>();
 
@@ -39,11 +38,6 @@
 		if (next.has(key)) next.delete(key);
 		else next.add(key);
 		return next;
-	};
-
-	const runKeyCheck = () => {
-		const api = window.__EDGES_DEVTOOLS__ as EdgesDevtoolsWindowApi | undefined;
-		keyCheckResult = api?.checkKeyUniqueness?.() ?? null;
 	};
 
 	const clearStateCache = () => {
@@ -156,22 +150,6 @@
 						<div><strong>Provider cache entries:</strong> {inspector.info.providerCacheEntries}</div>
 						<div><strong>Provider cache size:</strong> {toKb(inspector.info.providerCacheSizeBytes)}</div>
 					</div>
-
-					{#if keyCheckResult}
-						<div class="key-check {keyCheckResult.ok ? 'ok' : 'warn'}">
-							<div><strong>Key check:</strong> {keyCheckResult.ok ? 'OK' : 'Issues found'}</div>
-							<div><strong>Provider keys checked:</strong> {keyCheckResult.providerKeysChecked}</div>
-							{#if keyCheckResult.duplicateAttempts.length > 0}
-								<div class="duplicate-list">
-									{#each keyCheckResult.duplicateAttempts as duplicate (duplicate)}
-										<div>
-											{duplicate.key}: attempted {duplicate.attemptedKind}, existing {duplicate.existingKind} ({toDateTime(duplicate.at)})
-										</div>
-									{/each}
-								</div>
-							{/if}
-						</div>
-					{/if}
 				{/if}
 			</div>
 		</div>
@@ -345,29 +323,6 @@
 		background: #f8fafc;
 		border: 1px solid #cbd5e1;
 		border-radius: 8px;
-	}
-
-	.key-check {
-		padding: 8px;
-		border-radius: 8px;
-		border: 1px solid;
-	}
-
-	.key-check.ok {
-		border-color: #16a34a;
-		background: #f0fdf4;
-	}
-
-	.key-check.warn {
-		border-color: #dc2626;
-		background: #fef2f2;
-	}
-
-	.duplicate-list {
-		margin-top: 6px;
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
 	}
 
 	@media (max-width: 760px) {

@@ -23,10 +23,6 @@ type MarkedProvider = {
 	[PROVIDER_FACTORY_MARK]?: string;
 };
 
-type MarkedInstance = {
-	[PROVIDER_INSTANCE_MARK]?: string;
-};
-
 class AutoKeyGenerator {
 	private static cache = new WeakMap<UnknownFunc, string>();
 	private static counters = new Map<string, number>();
@@ -163,7 +159,9 @@ const createUiProvider = <
 
 		const constructionStack = readConstructionStack();
 		if (constructionStack.includes(cacheKey)) {
-			return contextMap.get(cacheKey) as T;
+			const cycleStart = constructionStack.indexOf(cacheKey);
+			const cyclePath = [...constructionStack.slice(cycleStart), cacheKey].join(' -> ');
+			throw new Error(`Circular provider dependency detected: ${cyclePath}`);
 		}
 		constructionStack.push(cacheKey);
 
@@ -203,15 +201,6 @@ type StoreDeps = {
 };
 
 export function createStore<T, I extends Record<string, unknown> = Record<string, unknown>>(
-	factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T,
-	inject?: I
-): () => T;
-export function createStore<T, I extends Record<string, unknown> = Record<string, unknown>>(
-	name: string,
-	factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T,
-	inject?: I
-): () => T;
-export function createStore<T, I extends Record<string, unknown> = Record<string, unknown>>(
 	nameOrFactory: string | ((args: StoreDeps & NoConflict<I, StoreDeps>) => T),
 	factoryOrInject?: ((args: StoreDeps & NoConflict<I, StoreDeps>) => T) | I,
 	inject?: I
@@ -249,28 +238,26 @@ export function createStore<T, I extends Record<string, unknown> = Record<string
 }
 
 export const createStoreFactory = <I extends Record<string, unknown>>(inject: I) => {
-	function storeFactory<T>(factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T): () => T;
-	function storeFactory<T>(name: string, factory: (args: StoreDeps & NoConflict<I, StoreDeps>) => T): () => T;
-	function storeFactory<T>(
-		nameOrFactory: string | ((args: StoreDeps & NoConflict<I, StoreDeps>) => T),
-		factory?: (args: StoreDeps & NoConflict<I, StoreDeps>) => T
+	function storeFactory<T, L extends Record<string, unknown> = Record<string, never>>(
+		nameOrFactory: string | ((args: StoreDeps & NoConflict<I & L, StoreDeps>) => T),
+		factoryOrLocalInject?: ((args: StoreDeps & NoConflict<I & L, StoreDeps>) => T) | L,
+		localInject?: L
 	): () => T {
+		const injections = {
+			...inject,
+			...(typeof nameOrFactory === 'string' ? localInject : (factoryOrLocalInject as L | undefined))
+		} as I & L;
+
 		if (typeof nameOrFactory === 'string') {
-			return createStore(nameOrFactory, factory!, inject);
-		} else {
-			return createStore(nameOrFactory, inject);
+			return createStore(nameOrFactory, factoryOrLocalInject as (args: StoreDeps & NoConflict<I & L, StoreDeps>) => T, injections);
 		}
+
+		return createStore(nameOrFactory, injections);
 	}
 
 	return storeFactory;
 };
 
-export function createPresenter<T, I extends Record<string, unknown> = Record<string, unknown>>(factory: (args: I) => T, inject?: I): () => T;
-export function createPresenter<T, I extends Record<string, unknown> = Record<string, unknown>>(
-	name: string,
-	factory: (args: I) => T,
-	inject?: I
-): () => T;
 export function createPresenter<T, I extends Record<string, unknown> = Record<string, unknown>>(
 	nameOrFactory: string | ((args: I) => T),
 	factoryOrInject?: ((args: I) => T) | I,
@@ -288,14 +275,21 @@ export function createPresenter<T, I extends Record<string, unknown> = Record<st
 }
 
 export const createPresenterFactory = <I extends Record<string, unknown>>(inject: I) => {
-	function presenterFactory<T>(factory: (args: I) => T): () => T;
-	function presenterFactory<T>(name: string, factory: (args: I) => T): () => T;
-	function presenterFactory<T>(nameOrFactory: string | ((args: I) => T), factory?: (args: I) => T): () => T {
+	function presenterFactory<T, L extends Record<string, unknown> = Record<string, never>>(
+		nameOrFactory: string | ((args: I & L) => T),
+		factoryOrLocalInject?: ((args: I & L) => T) | L,
+		localInject?: L
+	): () => T {
+		const injections = {
+			...inject,
+			...(typeof nameOrFactory === 'string' ? localInject : (factoryOrLocalInject as L | undefined))
+		} as I & L;
+
 		if (typeof nameOrFactory === 'string') {
-			return createPresenter(nameOrFactory, factory!, inject);
-		} else {
-			return createPresenter(nameOrFactory, inject);
+			return createPresenter(nameOrFactory, factoryOrLocalInject as (args: I & L) => T, injections);
 		}
+
+		return createPresenter(nameOrFactory, injections);
 	}
 
 	return presenterFactory;
